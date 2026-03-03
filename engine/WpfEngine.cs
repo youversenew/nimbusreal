@@ -1704,10 +1704,51 @@ public void CompileManualCCode(string moduleId, string code)
                 return;
             }
 
+            // Check UI type (wpf or mdui)
+            string uiType = _xmlParser.GetAttribute(uiNode, "type", "wpf").ToLower();
+            
             try
             {
-                _mainWindow = _wpfUI.CreateWindow(root, uiNode);
-                Log("INFO", "Window created successfully");
+                if (uiType == "mdui")
+                {
+                    // MDUI Rendering Engine
+                    Log("INFO", "Using Material Design UI (MDUI) Engine");
+                    
+                    // Create a temporary Windows Forms container for MDui
+                    Form mduiForm = new Form();
+                    mduiForm.Text = _xmlParser.GetAttribute(root, "Name", "Nimbus App");
+                    mduiForm.Width = int.Parse(_xmlParser.GetAttribute(root, "Width", "800"));
+                    mduiForm.Height = int.Parse(_xmlParser.GetAttribute(root, "Height", "600"));
+                    mduiForm.StartPosition = FormStartPosition.CenterScreen;
+                    
+                    // Create MDui renderer
+                    MDUIRenderer mduiRenderer = new MDUIRenderer(mduiForm);
+                    MDEngine mdEngine = mduiRenderer.CreateUI(uiNode);
+                    
+                    // Paint handler for rendering
+                    mduiForm.Paint += (s, e) => 
+                    {
+                        mdEngine.Render(e.Graphics);
+                    };
+                    
+                    // Mouse handlers for MDui
+                    mduiForm.MouseClick += (s, e) => mdEngine.HandleMouseClick(e.Location);
+                    mduiForm.MouseMove += (s, e) => mdEngine.HandleMouseMove(e.Location);
+                    mduiForm.MouseDoubleClick += (s, e) => mdEngine.HandleMouseDoubleClick(e.Location);
+                    mduiForm.KeyDown += (s, e) => mdEngine.HandleKeyDown(e.KeyCode);
+                    mduiForm.KeyUp += (s, e) => mdEngine.HandleKeyUp(e.KeyCode);
+                    
+                    // Store as window element for compatibility
+                    _mainWindow = new MDuiWindowAdapter(mduiForm, mdEngine);
+                    Log("INFO", "MDUI Window created successfully");
+                }
+                else
+                {
+                    // Default WPF rendering
+                    Log("INFO", "Using WPF Engine");
+                    _mainWindow = _wpfUI.CreateWindow(root, uiNode);
+                    Log("INFO", "WPF Window created successfully");
+                }
             }
             catch (Exception ex)
             {
@@ -2703,7 +2744,29 @@ public CSharpCompiler GetCompiler()
                 XmlNode uiNode = root.SelectSingleNode("UI");
                 if (uiNode != null)
                 {
-                    Window newWindow = _wpfUI.CreateWindow(root, uiNode);
+                    // Check UI type
+                    string uiType = _xmlParser.GetAttribute(uiNode, "type", "wpf").ToLower();
+                    Window newWindow = null;
+                    
+                    if (uiType == "mdui")
+                    {
+                        // MDUI Reload
+                        Form mduiForm = new Form();
+                        mduiForm.Text = _xmlParser.GetAttribute(root, "Name", "Nimbus App");
+                        mduiForm.Width = int.Parse(_xmlParser.GetAttribute(root, "Width", "800"));
+                        mduiForm.Height = int.Parse(_xmlParser.GetAttribute(root, "Height", "600"));
+                        
+                        MDUIRenderer mduiRenderer = new MDUIRenderer(mduiForm);
+                        MDEngine mdEngine = mduiRenderer.CreateUI(uiNode);
+                        
+                        mduiForm.Paint += (s, e) => mdEngine.Render(e.Graphics);
+                        mduiForm.MouseClick += (s, e) => mdEngine.HandleMouseClick(e.Location);
+                        newWindow = new MDuiWindowAdapter(mduiForm, mdEngine);
+                    }
+                    else
+                    {
+                        newWindow = _wpfUI.CreateWindow(root, uiNode);
+                    }
 
                     if (newWindow != null && newWindow.Content != null)
                     {

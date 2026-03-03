@@ -76,6 +76,7 @@ XmlParser.cs ^
 DevToolsServer.cs ^
 Program.cs ^
 ComponentSystem.cs ^
+
 !PLUGIN_LIST!
 
 endlocal
