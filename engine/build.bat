@@ -76,6 +76,10 @@ XmlParser.cs ^
 DevToolsServer.cs ^
 Program.cs ^
 ComponentSystem.cs ^
+UI/MDui.cs ^
+UI/MDEngine.cs ^
+UI/MDUIRenderer.cs ^
+UI/MDuiWindowAdapter.cs ^
 
 !PLUGIN_LIST!
 

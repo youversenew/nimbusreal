@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application name="MDui Demo Application" version="1.0">
+    <Window type="mdui" title="Material Design UI - Nimbus Demo" width="800" height="600" resizable="true">
+        <Properties>
+            <Property name="Theme" value="Dark"/>
+            <Property name="Color" value="#1E1E2E"/>
+            <Property name="Font" value="Segoe UI"/>
+        </Properties>
+
+        <!-- Header Section -->
+        <Container type="mdui" layout="vertical" padding="16" margin="0,0,0,0">
+            <MDuiText 
+                text="Material Design UI - Nimbus Framework" 
+                fontSize="24" 
+                fontWeight="bold" 
+                foreColor="#FFFFFF"
+                padding="10" />
+            
+            <MDuiText 
+                text="Modern UI Framework powered by GDI+ and C#" 
+                fontSize="14" 
+                foreColor="#B0B0B0"
+                padding="5,0,5,10" />
+        </Container>
+
+        <!-- Divider -->
+        <MDuiDivider color="#404050" thickness="1" margin="0,5,0,5" />
+
+        <!-- Components Demo Section -->
+        <Container type="mdui" layout="vertical" padding="16" margin="10,10,10,10">
+            <!-- Buttons Section -->
+            <MDuiText 
+                text="Buttons" 
+                fontSize="18" 
+                fontWeight="bold" 
+                foreColor="#FFFFFF"
+                margin="0,0,0,8" />
+
+            <Container type="mdui" layout="horizontal" padding="5" spacing="10">
+                <MDuiButton 
+                    text="Elevated Button" 
+                    width="120" 
+                    height="48" 
+                    style="elevated"
+                    backgroundColor="#6200EE"
+                    textColor="#FFFFFF"
+                    cornerRadius="4"
+                    elevation="6"
+                    onClick="OnButtonClick" />
+
+                <MDuiButton 
+                    text="Filled Button" 
+                    width="120" 
+                    height="48" 
+                    style="filled"
+                    backgroundColor="#3DDC84"
+                    textColor="#000000"
+                    cornerRadius="4" />
+
+                <MDuiButton 
+                    text="Outlined Button" 
+                    width="120" 
+                    height="48" 
+                    style="outlined"
+                    borderColor="#FFFFFF"
+                    borderThickness="2"
+                    textColor="#FFFFFF"
+                    cornerRadius="4" />
+
+                <MDuiButton 
+                    text="Text Button" 
+                    width="100" 
+                    height="48" 
+                    style="text"
+                    textColor="#6200EE"
+                    cornerRadius="0" />
+            </Container>
+
+            <MDuiDivider color="#404050" thickness="1" margin="0,15,0,15" />
+
+            <!-- Input Fields Section -->
+            <MDuiText 
+                text="Input Fields" 
+                fontSize="18" 
+                fontWeight="bold" 
+                foreColor="#FFFFFF"
+                margin="0,0,0,8" />
+
+            <Container type="mdui" layout="vertical" padding="5" spacing="12">
+                <MDuiTextField 
+                    label="Standard TextField" 
+                    placeholder="Enter text here..."
+                    width="350"
+                    height="48"
+                    cornerRadius="4"
+                    borderColor="#6200EE"
+                    textColor="#FFFFFF"
+                    placeholderColor="#808080" />
+
+                <MDuiTextField 
+                    label="Password Field" 
+                    placeholder="Enter password..."
+                    width="350"
+                    height="48"
+                    isPassword="true"
+                    cornerRadius="4"
+                    borderColor="#3DDC84"
+                    textColor="#FFFFFF" />
+
+                <MDuiTextField 
+                    label="Disabled Field" 
+                    placeholder="This field is disabled..."
+                    width="350"
+                    height="48"
+                    enabled="false"
+                    backgroundColor="#2A2A3E"
+                    textColor="#606070"
+                    cornerRadius="4" />
+            </Container>
+
+            <MDuiDivider color="#404050" thickness="1" margin="0,15,0,15" />
+
+            <!-- Cards Section -->
+            <MDuiText 
+                text="Cards" 
+                fontSize="18" 
+                fontWeight="bold" 
+                foreColor="#FFFFFF"
+                margin="0,0,0,8" />
+
+            <Container type="mdui" layout="horizontal" padding="5" spacing="16">
+                <MDuiCard 
+                    title="Card Title 1" 
+                    description="This is a Material Design card with elevation and ripple effect."
+                    width="200" 
+                    height="200"
+                    backgroundColor="#2A2A3E"
+                    titleColor="#FFFFFF"
+                    descriptionColor="#B0B0B0"
+                    cornerRadius="8"
+                    elevation="4"
+                    padding="16" />
+
+                <MDuiCard 
+                    title="Card Title 2" 
+                    description="Another card demonstrating the MDui framework capabilities."
+                    width="200" 
+                    height="200"
+                    backgroundColor="#323249"
+                    titleColor="#6200EE"
+                    descriptionColor="#FFFFFF"
+                    cornerRadius="8"
+                    elevation="8"
+                    padding="16" />
+
+                <MDuiCard 
+                    title="Interactive Card" 
+                    description="Click this card for interactive behavior."
+                    width="200" 
+                    height="200"
+                    backgroundColor="#2A2A3E"
+                    titleColor="#3DDC84"
+                    descriptionColor="#B0B0B0"
+                    cornerRadius="8"
+                    elevation="6"
+                    padding="16"
+                    onClick="OnCardClick" />
+            </Container>
+
+            <MDuiDivider color="#404050" thickness="1" margin="0,15,0,15" />
+
+            <!-- Progress and Indicator Section -->
+            <MDuiText 
+                text="Progress Indicators" 
+                fontSize="18" 
+                fontWeight="bold" 
+                foreColor="#FFFFFF"
+                margin="0,0,0,8" />
+
+            <Container type="mdui" layout="vertical" padding="5" spacing="12">
+                <MDuiLinearProgress 
+                    value="65" 
+                    maximum="100"
+                    width="300"
+                    height="8"
+                    trackColor="#404050"
+                    indicatorColor="#6200EE"
+                    cornerRadius="4" />
+
+                <MDuiLinearProgress 
+                    value="45" 
+                    maximum="100"
+                    width="300"
+                    height="8"
+                    trackColor="#404050"
+                    indicatorColor="#3DDC84"
+                    cornerRadius="4" />
+
+                <MDuiCircularProgress 
+                    value="75" 
+                    maximum="100"
+                    size="64"
+                    thickness="4"
+                    trackColor="#404050"
+                    indicatorColor="#FF6B6B" />
+            </Container>
+
+            <MDuiDivider color="#404050" thickness="1" margin="0,15,0,15" />
+
+            <!-- Switch and Checkbox Section -->
+            <MDuiText 
+                text="Selection Controls" 
+                fontSize="18" 
+                fontWeight="bold" 
+                foreColor="#FFFFFF"
+                margin="0,0,0,8" />
+
+            <Container type="mdui" layout="vertical" padding="5" spacing="16">
+                <Container type="mdui" layout="horizontal" spacing="16">
+                    <MDuiSwitch 
+                        label="Enable Dark Mode" 
+                        checked="true"
+                        width="240"
+                        height="40"
+                        trackOnColor="#6200EE"
+                        trackOffColor="#404050"
+                        thumbColor="#FFFFFF" />
+
+                    <MDuiSwitch 
+                        label="Notifications" 
+                        checked="false"
+                        width="240"
+                        height="40"
+                        trackOnColor="#3DDC84"
+                        trackOffColor="#404050"
+                        thumbColor="#FFFFFF" />
+                </Container>
+
+                <Container type="mdui" layout="horizontal" spacing="16">
+                    <MDuiCheckBox 
+                        label="Accept Terms" 
+                        checked="false"
+                        size="24"
+                        checkedColor="#6200EE"
+                        uncheckedBorderColor="#FFFFFF" />
+
+                    <MDuiCheckBox 
+                        label="Subscribe to Updates" 
+                        checked="true"
+                        size="24"
+                        checkedColor="#3DDC84"
+                        uncheckedBorderColor="#FFFFFF" />
+                </Container>
+            </Container>
+
+            <MDuiDivider color="#404050" thickness="1" margin="0,15,0,15" />
+
+            <!-- Badges and Chips Section -->
+            <MDuiText 
+                text="Badges & Chips" 
+                fontSize="18" 
+                fontWeight="bold" 
+                foreColor="#FFFFFF"
+                margin="0,0,0,8" />
+
+            <Container type="mdui" layout="horizontal" padding="5" spacing="10">
+                <MDuiBadge 
+                    text="NEW" 
+                    backgroundColor="#FF6B6B"
+                    textColor="#FFFFFF"
+                    padding="4,8,4,8"
+                    cornerRadius="12"
+                    fontSize="12" />
+
+                <MDuiBadge 
+                    text="99+" 
+                    backgroundColor="#6200EE"
+                    textColor="#FFFFFF"
+                    padding="4,8,4,8"
+                    cornerRadius="12"
+                    fontSize="12" />
+
+                <MDuiChip 
+                    text="Material" 
+                    backgroundColor="#323249"
+                    textColor="#FFFFFF"
+                    padding="8,12,8,12"
+                    cornerRadius="16" />
+
+                <MDuiChip 
+                    text="Design" 
+                    backgroundColor="#2A2A3E"
+                    borderColor="#6200EE"
+                    borderThickness="1"
+                    textColor="#FFFFFF"
+                    padding="8,12,8,12"
+                    cornerRadius="16" />
+            </Container>
+        </Container>
+
+        <!-- Footer -->
+        <Container type="mdui" layout="vertical" padding="16" margin="0,20,0,0">
+            <MDuiDivider color="#404050" thickness="1" margin="0,0,0,16" />
+            <MDuiText 
+                text="© 2026 Nimbus Framework - Material Design UI Demo" 
+                fontSize="12" 
+                foreColor="#808080"
+                padding="5" />
+        </Container>
+    </Window>
+
+    <!-- Event Handlers -->
+    <Events>
+        <Event name="OnButtonClick" handler="HandleButtonClick" />
+        <Event name="OnCardClick" handler="HandleCardClick" />
+    </Events>
+</Application>
