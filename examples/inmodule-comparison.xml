@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<App Name="InModule vs WPF Comparison"
+     Width="500"
+     Height="350"
+     Theme="Dark"
+     DarkMode="true"
+     inModule="true"
+     OnLoad="OnLoad">
+
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!--   This example shows how to use inModule for custom UI    -->
+    <!--   Set inModule="false" to use traditional WPF rendering   -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+
+    <Components>
+        <Colors>
+            <Color Name="BgPrimary" Value="#1E1E1E"/>
+            <Color Name="BgSecondary" Value="#252526"/>
+            <Color Name="TextPrimary" Value="#D4D4D4"/>
+            <Color Name="TextSecondary" Value="#858585"/>
+            <Color Name="SuccessGreen" Value="#4EC9B0"/>
+            <Color Name="WarningOrange" Value="#CE9178"/>
+        </Colors>
+    </Components>
+
+    <Logic>
+        <Var Name="RenderMode" Value="inModule" Type="string"/>
+        <Var Name="MessageLog" Value="System ready" Type="string"/>
+        
+        <Handler Name="OnLoad">
+            <Set Control="modeLabel" Property="Text" Value="RENDER: Custom C# Module"/>
+            <Set Control="logLabel" Property="Text" Value="Benefits of inModule:&#10;• No WPF dependency&#10;• Lightweight rendering&#10;• Custom-built UI elements"/>
+        </Handler>
+    </Logic>
+
+    <UI>
+        <StackPanel Name="mainPanel" 
+                   Orientation="Vertical" 
+                   Background="{Color.BgPrimary}">
+            
+            <!-- Header -->
+            <StackPanel Name="headerPanel" 
+                       Orientation="Vertical" 
+                       Background="{Color.BgSecondary}">
+                <Label Name="titleLabel" 
+                       Text="InModule Rendering System" 
+                       FontSize="18" 
+                       Foreground="{Color.SuccessGreen}"/>
+                <Label Name="modeLabel" 
+                       Text="RENDER: WPF" 
+                       FontSize="12" 
+                       Foreground="{Color.TextSecondary}"/>
+            </StackPanel>
+            
+            <!-- Info Box -->
+            <StackPanel Name="infoPanel" 
+                       Orientation="Vertical" 
+                       Background="{Color.BgSecondary}">
+                <Label Name="infoTitle" 
+                       Text="What is inModule?" 
+                       FontSize="14" 
+                       Foreground="{Color.WarningOrange}"/>
+                <Label Name="logLabel" 
+                       Text="Loading..." 
+                       FontSize="11" 
+                       Foreground="{Color.TextPrimary}"/>
+            </StackPanel>
+            
+            <!-- Action Panel -->
+            <StackPanel Name="actionPanel" 
+                       Orientation="Horizontal" 
+                       Background="{Color.BgSecondary}">
+                <Button Name="learnBtn" 
+                       Text="Learn More" 
+                       Background="{Color.SuccessGreen}" 
+                       Foreground="black"/>
+                <Button Name="docBtn" 
+                       Text="Documentation" 
+                       Background="{Color.TextSecondary}" 
+                       Foreground="black"/>
+            </StackPanel>
+        </StackPanel>
+    </UI>
+</App>

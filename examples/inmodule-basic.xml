@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<App Name="InModule Example"
+     Width="600"
+     Height="400"
+     Theme="Dark"
+     inModule="true">
+
+    <Components>
+        <Colors>
+            <Color Name="BgMain" Value="#1E1E1E"/>
+            <Color Name="BgAccent" Value="#2D2D30"/>
+            <Color Name="TextPrimary" Value="#CCCCCC"/>
+            <Color Name="TextAccent" Value="#0E639C"/>
+            <Color Name="AccentBlue" Value="#007ACC"/>
+        </Colors>
+    </Components>
+
+    <Logic>
+        <Var Name="buttonClicks" Value="0" Type="int"/>
+        <Handler Name="OnAppLoad">
+            <Alert Message="InModule UI loaded! This is rendered via custom C#"/>
+        </Handler>
+        <Handler Name="OnButtonClick">
+            <Increment Var="buttonClicks"/>
+            <Set Control="statusLabel" Property="Text" Value="Button clicked: {buttonClicks} times"/>
+        </Handler>
+    </Logic>
+
+    <UI>
+        <Grid Name="mainGrid" Background="#1E1E1E" RowDefinitions="Auto,*,50">
+            <StackPanel Name="headerPanel" Orientation="Vertical" Grid.Row="0">
+                <Label Name="titleLabel" Text="Custom C# Module UI" FontSize="24" Foreground="#0E639C"/>
+                <Label Name="descLabel" Text="This UI is created without WPF - pure custom C#" FontSize="12" Foreground="#CCCCCC"/>
+            </StackPanel>
+            <StackPanel Name="contentPanel" Orientation="Vertical" Background="#2D2D30" Grid.Row="1">
+                <Label Name="welcomeLabel" Text="Welcome to inModule rendering!" FontSize="16"/>
+                <Label Name="statusLabel" Text="Click the button to test interactivity" FontSize="14" Foreground="#CCCCCC"/>
+            </StackPanel>
+            <Button Name="actionButton" Text="Click Me!" Background="#007ACC" Foreground="#FFFFFF" Grid.Row="2" onClick="OnButtonClick"/>
+        </Grid>
+    </UI>
+</App>

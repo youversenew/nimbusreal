@@ -80,41 +80,52 @@ namespace Nimbus.WPF
         /// </summary>
         private void ConvertNode(XmlNode node, StringBuilder xaml, int indent)
         {
+            ConvertNode(node, xaml, indent, false, 0);
+        }
+
+        private void ConvertNode(XmlNode node, StringBuilder xaml, int indent, bool isGridChild, int gridChildIndex)
+        {
             if (node == null || node.NodeType != XmlNodeType.Element) return;
             if (node.Name.StartsWith("#")) return;
 
             string indentStr = new string(' ', indent * 4);
             string elementName = node.Name;
-
-            // 1. Check for Custom Components (GlassCard, etc.)
-            // We cannot fully expand them here easily without duplication logic from WpfUI.
-            // However, for XAML export, we assume the user wants standard WPF XAML.
-            // If it's a known component, we might need to skip or treat as Border for simplicity,
-            // OR ideally, WpfUI should handle the runtime generation.
-            // For this Renderer class, we will perform direct conversion with resource resolution.
-
             string xamlTagName = ConvertElementName(elementName);
             
-            // If it's a custom component that doesn't map to standard XAML tag,
-            // we should warn or try to fallback. For now, we assume standard tags or
-            // tags that the XamlReader can handle if we provided a mapping.
-            // But since XamlReader doesn't know "GlassCard", we must assume this Renderer
-            // is mostly used for "Standard" elements or after transformation.
-            
-            // FIX: If we encounter a custom component here, it means we are in "Export" mode.
-            // We should probably just output it as a Grid/Border placeholder if we can't fully expand it.
-            // But for now, let's treat everything as a potential standard control.
-
             xaml.Append(string.Format("{0}<{1}", indentStr, xamlTagName));
+            
+            // Add Grid.Row if this is a Grid child and element doesn't already have Row
+            if (isGridChild)
+            {
+                bool hasRow = false;
+                bool hasColumn = false;
+                if (node.Attributes != null)
+                {
+                    XmlAttribute rowAttr = node.Attributes["Grid.Row"];
+                    if (rowAttr == null) rowAttr = node.Attributes["Row"];
+                    if (rowAttr != null) hasRow = true;
+                    
+                    XmlAttribute colAttr = node.Attributes["Grid.Column"];
+                    if (colAttr == null) colAttr = node.Attributes["Column"];
+                    if (colAttr != null) hasColumn = true;
+                }
+                if (!hasRow)
+                {
+                    xaml.Append(string.Format(" Grid.Row=\"{0}\"", gridChildIndex));
+                }
+            }
             
             if (node.Attributes != null)
             {
                 foreach (XmlAttribute attr in node.Attributes)
                 {
+                    // Skip Grid Row/Column if we already added them
+                    if ((attr.Name == "Grid.Row" || attr.Name == "Row") && isGridChild) continue;
+                    if ((attr.Name == "Grid.Column" || attr.Name == "Column") && isGridChild) continue;
+                    
                     string attrName = ConvertAttributeName(attr.Name);
                     if (!string.IsNullOrEmpty(attrName))
                     {
-                        // CRITICAL FIX: Resolve resource references {Color.BgDark} -> #05050A
                         string attrValue = ResolveValue(attr.Value);
                         xaml.Append(string.Format(" {0}=\"{1}\"", attrName, EscapeXml(attrValue)));
                     }
@@ -125,11 +136,15 @@ namespace Nimbus.WPF
             {
                 xaml.AppendLine(">");
                 
+                int childIndex = 0;
+                bool childrenAreGridItems = elementName.ToLower() == "grid";
+                
                 foreach (XmlNode child in node.ChildNodes)
                 {
                     if (child.NodeType == XmlNodeType.Element)
                     {
-                        ConvertNode(child, xaml, indent + 1);
+                        ConvertNode(child, xaml, indent + 1, childrenAreGridItems, childIndex);
+                        if (childrenAreGridItems) childIndex++;
                     }
                 }
                 
@@ -137,7 +152,6 @@ namespace Nimbus.WPF
             }
             else if (!string.IsNullOrWhiteSpace(node.InnerText) && node.ChildNodes.Count == 1)
             {
-                // Text content resolution (e.g. Text="{Binding}")
                 string textContent = ResolveValue(node.InnerText.Trim());
                 xaml.AppendLine(string.Format(">{0}</{1}>", EscapeXml(textContent), xamlTagName));
             }
@@ -152,10 +166,33 @@ namespace Nimbus.WPF
         /// </summary>
         private string ResolveValue(string value)
         {
-            // if (_engine != null && _engine.Components != null)
-            // {
-            //     return _engine.Components.ResolveAllReferences(value);
-            // }
+            if (string.IsNullOrEmpty(value))
+                return value;
+
+            // Resolve color references {Color.ColorName}
+            if (value.StartsWith("{Color.") && value.EndsWith("}"))
+            {
+                string colorName = value.Substring(7, value.Length - 8);
+                if (_engine != null && _engine.ComponentSystem != null && 
+                    _engine.ComponentSystem.Colors.ContainsKey(colorName))
+                {
+                    return _engine.ComponentSystem.Colors[colorName];
+                }
+                // If not found, return as-is (will fail gracefully in XAML)
+                return value;
+            }
+
+            // Resolve variable references {VariableName}
+            if (value.StartsWith("{") && value.EndsWith("}"))
+            {
+                string varName = value.Substring(1, value.Length - 2);
+                if (_engine != null && _engine.Variables.ContainsKey(varName))
+                {
+                    object val = _engine.Variables[varName];
+                    return val != null ? val.ToString() : value;
+                }
+            }
+
             return value;
         }
         
@@ -166,13 +203,15 @@ namespace Nimbus.WPF
         {
             string lowerName = name.ToLower();
             
-            // Skip event handlers and internal properties
+            // Skip event handlers, internal properties, and Grid definitions
             if (lowerName == "onclick" || lowerName == "click" ||
                 lowerName == "onchange" || lowerName == "ontextchanged" ||
                 lowerName == "onenter" || lowerName == "onvaluechanged" ||
                 lowerName == "onmouseenter" || lowerName == "onmouseleave" ||
                 lowerName == "name" && name == "Name" || // Name is handled, but check duplication
-                lowerName == "id")
+                lowerName == "id" ||
+                lowerName == "rowdefinitions" ||
+                lowerName == "columndefinitions")
             {
                 return "";
             }

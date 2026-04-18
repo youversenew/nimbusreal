@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<App Name="Modern InModule UI"
+     Width="800"
+     Height="600"
+     Theme="Dark"
+     inModule="true">
+
+    <Components>
+        <Colors>
+            <Color Name="BgPrimary" Value="#1E1E1E"/>
+            <Color Name="BgSecondary" Value="#2D2D30"/>
+            <Color Name="BgTertiary" Value="#3E3E42"/>
+            <Color Name="TextPrimary" Value="#FFFFFF"/>
+            <Color Name="TextSecondary" Value="#CCCCCC"/>
+            <Color Name="AccentBlue" Value="#007ACC"/>
+            <Color Name="AccentGreen" Value="#00A551"/>
+            <Color Name="AccentOrange" Value="#FF7A00"/>
+        </Colors>
+    </Components>
+
+    <Logic>
+        <Var Name="toggleState" Value="false" Type="bool"/>
+        <Var Name="sliderValue" Value="50" Type="double"/>
+        <Var Name="inputValue" Value="" Type="string"/>
+        <Var Name="selectedTab" Value="0" Type="int"/>
+        
+        <Handler Name="OnToggle">
+            <Alert Message="Toggle clicked"/>
+        </Handler>
+        <Handler Name="OnSliderChange">
+            <Alert Message="Slider: {sliderValue}"/>
+        </Handler>
+    </Logic>
+
+    <UI>
+        <FlexPanel Direction="Row" Gap="16" Padding="24" Background="#1E1E1E">
+            
+            <!-- SIDEBAR -->
+            <AbsolutePanel Width="280" Background="#2D2D30" CornerRadius="8" Shadow="true" Padding="16">
+                <Label Text="Dashboard" FontSize="20" FontWeight="Bold" Foreground="#0E639C"/>
+                <Button Text="Home" Icon="home" Margin="0,16,0,0" Width="100%" Height="40"/>
+                <Button Text="Settings" Icon="settings" Margin="0,8,0,0" Width="100%" Height="40"/>
+                <Button Text="Profile" Icon="user" Margin="0,8,0,0" Width="100%" Height="40"/>
+                <Separator Height="1" Background="#3E3E42" Margin="0,16,0,16"/>
+                <Badge Text="Premium" BadgeStyle="Primary" Margin="0,8,0,0"/>
+            </AbsolutePanel>
+            
+            <!-- MAIN CONTENT -->
+            <FlexPanel Direction="Column" Gap="16" FlexGrow="1">
+                
+                <!-- TOP BAR WITH TITLE AND ACTIONS -->
+                <FlexPanel Direction="Row" JustifyContent="SpaceBetween" AlignItems="Center" Height="50" Background="#2D2D30" CornerRadius="8" Padding="16">
+                    <Label Text="Modern InModule UI" FontSize="24" FontWeight="Bold"/>
+                    <FlexPanel Direction="Row" Gap="8">
+                        <Button Text="Help" Icon="question" CornerRadius="4" Width="40" Height="40"/>
+                        <Button Text="Logout" Icon="logout" CornerRadius="4" Width="40" Height="40"/>
+                    </FlexPanel>
+                </FlexPanel>
+                
+                <!-- CONTENT CARDS GRID -->
+                <FlexPanel Direction="Row" Gap="16" Wrap="true">
+                    
+                    <!-- CARD 1: TOGGLES -->
+                    <Card Width="280" CornerRadius="12" Shadow="true" Padding="20" Background="#2D2D30">
+                        <Label Text="Toggle Controls" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <FlexPanel Direction="Column" Gap="12">
+                            <FlexPanel Direction="Row" AlignItems="Center" Gap="8">
+                                <Toggle IsChecked="false" Label="Enable Notifications" onClick="OnToggle"/>
+                                <Label Text="Notifications" FontSize="12" Foreground="#CCCCCC"/>
+                            </FlexPanel>
+                            <FlexPanel Direction="Row" AlignItems="Center" Gap="8">
+                                <Toggle IsChecked="true" Label="Dark Mode"/>
+                                <Label Text="Dark Mode" FontSize="12" Foreground="#CCCCCC"/>
+                            </FlexPanel>
+                        </FlexPanel>
+                    </Card>
+                    
+                    <!-- CARD 2: SLIDER -->
+                    <Card Width="280" CornerRadius="12" Shadow="true" Padding="20" Background="#2D2D30">
+                        <Label Text="Slider Control" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <Label Text="Volume: 50%" FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,8"/>
+                        <Slider Value="50" Minimum="0" Maximum="100" Step="1" Width="100%" Height="24" onClick="OnSliderChange"/>
+                        <ProgressBar Progress="50" ProgressColor="#007ACC" Margin="0,12,0,0"/>
+                    </Card>
+                    
+                    <!-- CARD 3: INPUT FIELDS -->
+                    <Card Width="280" CornerRadius="12" Shadow="true" Padding="20" Background="#2D2D30">
+                        <Label Text="Input Fields" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <Input Placeholder="Enter name..." InputType="Text" Margin="0,0,0,8"/>
+                        <Input Placeholder="Enter email..." InputType="Email" Margin="0,0,0,8"/>
+                        <Button Text="Submit" Background="#007ACC" Width="100%" Height="36" CornerRadius="4"/>
+                    </Card>
+                    
+                </FlexPanel>
+                
+                <!-- TABS SECTION -->
+                <Card CornerRadius="12" Shadow="true" Padding="20" Background="#2D2D30">
+                    <Tabs TabNames="Overview,Analytics,Settings">
+                        <Label Text="Tab Content Area" FontSize="14" Margin="0,16,0,0"/>
+                        <ProgressBar Progress="75" ProgressColor="#00A551" Margin="0,12,0,0"/>
+                    </Tabs>
+                </Card>
+                
+            </FlexPanel>
+            
+        </FlexPanel>
+    </UI>
+</App>

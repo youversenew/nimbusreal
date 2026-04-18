@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<App Name="InModule Layout Demo"
+     Width="800"
+     Height="600"
+     Theme="Dark"
+     DarkMode="true"
+     inModule="true"
+     OnLoad="OnAppLoad">
+
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!--   INMODULE RENDERING: Multi-Column Layout Example         -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+
+    <Plugins>
+    </Plugins>
+
+    <Components>
+        <Colors>
+            <Color Name="DarkBg" Value="#0D0221"/>
+            <Color Name="MediumBg" Value="#1A0033"/>
+            <Color Name="LightBg" Value="#2D1B69"/>
+            <Color Name="PrimaryText" Value="#EEEEEE"/>
+            <Color Name="SecondaryText" Value="#BBBBBB"/>
+            <Color Name="AccentPurple" Value="#7B2CBF"/>
+            <Color Name="AccentPink" Value="#E0AAFF"/>
+        </Colors>
+    </Components>
+
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!--                        LOGIC                              -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <Logic>
+        <Var Name="currentTab" Value="home" Type="string"/>
+        <Var Name="itemCount" Value="0" Type="int"/>
+        
+        <Handler Name="OnAppLoad">
+            <Set Control="homeLabel" Property="Text" Value="Welcome to inModule Layout!"/>
+        </Handler>
+        
+        <Handler Name="OnTabClicked">
+            <Set Control="currentTab" Property="Text" Value="Tab activated"/>
+        </Handler>
+    </Logic>
+
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!--                        UI LAYOUT                          -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <UI>
+        <Grid Name="rootGrid" 
+              Background="{Color.DarkBg}" 
+              ColumnDefinitions="200,*" 
+              RowDefinitions="auto,*,60">
+            
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!--           SIDEBAR                                   -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Name="sidebarPanel" 
+                       Orientation="Vertical" 
+                       Background="{Color.MediumBg}">
+                
+                <Label Name="sidebarTitle" 
+                       Text="NAVIGATION" 
+                       FontSize="12" 
+                       Foreground="{Color.AccentPink}"/>
+                
+                <Button Name="btnHome" 
+                       Text="Home" 
+                       Background="{Color.AccentPurple}" 
+                       Margin="5"/>
+                
+                <Button Name="btnSettings" 
+                       Text="Settings" 
+                       Background="{Color.LightBg}" 
+                       Margin="5"/>
+                
+                <Button Name="btnAbout" 
+                       Text="About" 
+                       Background="{Color.LightBg}" 
+                       Margin="5"/>
+            </StackPanel>
+            
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!--           MAIN CONTENT AREA                         -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Name="mainContentPanel" 
+                       Orientation="Vertical" 
+                       Background="{Color.DarkBg}">
+                
+                <Label Name="headerLabel" 
+                       Text="InModule Multi-Column Demo" 
+                       FontSize="20" 
+                       Foreground="{Color.AccentPink}"/>
+                
+                <Label Name="homeLabel" 
+                       Text="Main content area" 
+                       FontSize="14" 
+                       Foreground="{Color.PrimaryText}"/>
+                
+                <Grid Name="contentGrid" 
+                     Background="{Color.MediumBg}" 
+                     ColumnDefinitions="*,*" 
+                     RowDefinitions="auto,auto">
+                    
+                    <Label Name="col1Title" 
+                          Text="Column 1" 
+                          FontSize="14" 
+                          Foreground="{Color.AccentPink}"/>
+                    
+                    <Label Name="col2Title" 
+                          Text="Column 2" 
+                          FontSize="14" 
+                          Foreground="{Color.AccentPink}"/>
+                    
+                    <Label Name="col1Content" 
+                          Text="Content for column 1 goes here" 
+                          FontSize="12" 
+                          Foreground="{Color.SecondaryText}"/>
+                    
+                    <Label Name="col2Content" 
+                          Text="Content for column 2 goes here" 
+                          FontSize="12" 
+                          Foreground="{Color.SecondaryText}"/>
+                </Grid>
+            </StackPanel>
+            
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!--           STATUS BAR                                -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Name="statusBar" 
+                       Orientation="Horizontal" 
+                       Background="{Color.LightBg}">
+                
+                <Label Name="statusLabel" 
+                       Text="Ready" 
+                       FontSize="12" 
+                       Foreground="{Color.PrimaryText}"/>
+            </StackPanel>
+        </Grid>
+    </UI>
+</App>

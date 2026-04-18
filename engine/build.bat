@@ -51,7 +51,7 @@ if exist "plugins" (
 
 "%CSC%" ^
 /target:exe ^
-/out:bin\nimbus.exe ^
+/out:nimbus.exe ^
 /optimize+ ^
 /warn:0 ^
 /platform:anycpu ^
@@ -76,6 +76,9 @@ XmlParser.cs ^
 DevToolsServer.cs ^
 Program.cs ^
 ComponentSystem.cs ^
+IUIModule.cs ^
+ModuleRenderer.cs ^
+ModuleWindow.cs ^
 !PLUGIN_LIST!
 
 endlocal

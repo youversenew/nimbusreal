@@ -92,11 +92,13 @@ private bool _pluginsInitialized;
         {
             get { return _windows; }
         }
+        
+        public ComponentSystem ComponentSystem
+        {
+            get { return _compSystem; }
+        }
+        
         // Boshqa public propertylar bilan birga:
-//         public ComponentSystem Components
-// {
-//     get { return _compSystem; }
-// }
         public Dictionary<string, FrameworkElement> Controls
         {
             get { lock (_controlLock) { return new Dictionary<string, FrameworkElement>(_controls); } }
@@ -149,8 +151,9 @@ private bool _pluginsInitialized;
 private XmlParser _xmlParser;
 private WpfUI _wpfUI;
 private LogicRunner _logicRunner;
-// private ComponentSystem _compSystem;  // COMMENT QILINDI
+private ComponentSystem _compSystem;
 private XamlRenderer _xamlRenderer;
+private ModuleRenderer _moduleRenderer;
 private FileSystemWatcher _fileWatcher;
 private XmlDocument _appDoc;
 private Window _mainWindow;
@@ -236,10 +239,10 @@ private bool _ipcRunning;
     _wpfUI = new WpfUI(this);
     _logicRunner = new LogicRunner(this);
     _xamlRenderer = new XamlRenderer(this);
+    _moduleRenderer = new ModuleRenderer(this);
     
-    // COMMENT QILINDI:
-    // _compSystem = new ComponentSystem(this);
-    // _compSystem.RegisterBuiltinComponents();
+    // Initialize ComponentSystem
+    _compSystem = new ComponentSystem(this);
     
     // OS detection
     SystemInfo = new OSInfo();
@@ -1662,15 +1665,15 @@ public void CompileManualCCode(string moduleId, string code)
             {
                 StartIPC();
             }
-            // Run() metodida, "// Parse Styles" dan OLDIN qo'shing:
-
-// Parse Components section
-// XmlNode componentsNode = root.SelectSingleNode("Components");
-// if (componentsNode != null)
-// {
-//     _compSystem.ParseComponentsSection(componentsNode);
-//     Log("DEBUG", "Components section parsed");
-// }
+            
+            // Parse Components section
+            XmlNode componentsNode = root.SelectSingleNode("Components");
+            if (componentsNode != null)
+            {
+                _compSystem.ParseComponentsSection(componentsNode);
+                Log("DEBUG", "Components section parsed");
+            }
+            
             // Parse Styles
             XmlNode stylesNode = root.SelectSingleNode("Styles");
             if (stylesNode != null)
@@ -1704,10 +1707,32 @@ public void CompileManualCCode(string moduleId, string code)
                 return;
             }
 
+            // ===== CHECK FOR INMODULE =====
+            bool useInModule = _xmlParser.GetBoolAttribute(root, "inModule", false);
+            
             try
             {
-                _mainWindow = _wpfUI.CreateWindow(root, uiNode);
-                Log("INFO", "Window created successfully");
+                if (useInModule)
+                {
+                    Log("INFO", "Creating inModule UI (custom C#, no WPF)");
+                    
+                    // Render XML to UIModule tree
+                    IUIModule rootModule = _moduleRenderer.RenderUI(root, uiNode);
+                    if (rootModule == null)
+                    {
+                        throw new Exception("Failed to render UIModule tree");
+                    }
+                    
+                    // Create ModuleWindow
+                    _mainWindow = new ModuleWindow(this, root, uiNode, rootModule);
+                    Log("INFO", "inModule window created successfully");
+                }
+                else
+                {
+                    Log("INFO", "Creating WPF window");
+                    _mainWindow = _wpfUI.CreateWindow(root, uiNode);
+                    Log("INFO", "WPF window created successfully");
+                }
             }
             catch (Exception ex)
             {
@@ -2703,7 +2728,21 @@ public CSharpCompiler GetCompiler()
                 XmlNode uiNode = root.SelectSingleNode("UI");
                 if (uiNode != null)
                 {
-                    Window newWindow = _wpfUI.CreateWindow(root, uiNode);
+                    bool useInModule = _xmlParser.GetBoolAttribute(root, "inModule", false);
+                    Window newWindow = null;
+                    
+                    if (useInModule)
+                    {
+                        IUIModule rootModule = _moduleRenderer.RenderUI(root, uiNode);
+                        if (rootModule != null)
+                        {
+                            newWindow = new ModuleWindow(this, root, uiNode, rootModule);
+                        }
+                    }
+                    else
+                    {
+                        newWindow = _wpfUI.CreateWindow(root, uiNode);
+                    }
 
                     if (newWindow != null && newWindow.Content != null)
                     {
