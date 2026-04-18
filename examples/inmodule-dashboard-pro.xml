@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<App Name="Modern Dashboard Pro"
+<App Name="Modern Dashboard Pro - inModule Debug Mode"
      Width="1200"
      Height="800"
      Theme="Dark"
@@ -14,10 +14,8 @@
             <Color Name="Danger" Value="#F44747"/>
             <Color Name="BgDark" Value="#1E1E1E"/>
             <Color Name="BgCard" Value="#2D2D30"/>
-            <Color Name="BgHover" Value="#3E3E42"/>
             <Color Name="TextPrimary" Value="#FFFFFF"/>
             <Color Name="TextSecondary" Value="#CCCCCC"/>
-            <Color Name="BorderColor" Value="#555555"/>
         </Colors>
     </Components>
 
@@ -27,161 +25,103 @@
         <Var Name="notificationCount" Value="5" Type="int"/>
         <Var Name="volumeLevel" Value="75" Type="double"/>
         <Var Name="darkModeEnabled" Value="true" Type="bool"/>
-        <Var Name="searchQuery" Value="" Type="string"/>
         
         <Handler Name="OnMenuClick">
-            <Alert Message="Menu item clicked"/>
+            <Alert Message="Menu item clicked - Check F12 console for debug info"/>
         </Handler>
-        <Handler Name="OnToggleDarkMode">
-            <Alert Message="Dark mode toggled"/>
-        </Handler>
-        <Handler Name="OnSearch">
-            <Alert Message="Search: {searchQuery}"/>
+        <Handler Name="OnClearLogs">
+            <Alert Message="Logs cleared"/>
         </Handler>
     </Logic>
 
     <UI>
-        <!-- MAIN FLEX LAYOUT: Header + Content -->
-        <FlexPanel Direction="Column" Gap="0" Background="#1E1E1E" Width="100%" Height="100%">
+        <!-- MAIN CONTAINER: Header + Content -->
+        <FlexPanel Direction="Column" Gap="0" Background="#1E1E1E" Width="1200" Height="800">
             
-            <!-- ═════════════════════════════════════════════ HEADER ═════════════════════════════════════════════ -->
-            <FlexPanel Direction="Row" JustifyContent="SpaceBetween" AlignItems="Center" 
-                      Height="60" Background="#2D2D30" Padding="16" BorderBrush="#555555" BorderThickness="1" Gap="16">
-                
-                <!-- LOGO & TITLE -->
-                <FlexPanel Direction="Row" AlignItems="Center" Gap="12">
-                    <Label Text="◆" FontSize="28" Foreground="#007ACC" FontWeight="Bold"/>
-                    <Label Text="Modern Dashboard Pro" FontSize="18" Foreground="#FFFFFF" FontWeight="Bold"/>
-                </FlexPanel>
-                
-                <!-- SEARCH BAR -->
-                <Input Name="searchInput" Placeholder="Search anything..." InputType="Text" 
-                      Width="300" Height="36" Padding="8,12" CornerRadius="6" 
-                      Background="#3E3E42" BorderBrush="#555555" BorderThickness="1"
-                      Foreground="#FFFFFF"/>
-                
-                <!-- HEADER ACTIONS -->
-                <FlexPanel Direction="Row" AlignItems="Center" Gap="8">
-                    <Badge Name="notificationBadge" Text="5" BadgeStyle="Danger" Tooltip="5 new notifications"/>
-                    <Button Text="🔔" Width="36" Height="36" CornerRadius="6" Background="#3E3E42" Cursor="Hand" onClick="OnNotifications"/>
-                    <Button Text="⚙" Width="36" Height="36" CornerRadius="6" Background="#3E3E42" Cursor="Hand" onClick="OnSettings"/>
-                    <Toggle IsChecked="true" Label="Dark Mode" onClick="OnToggleDarkMode"/>
-                    <Button Text="👤 Admin" Width="80" Height="36" CornerRadius="6" Background="#007ACC" Foreground="#FFFFFF" Cursor="Hand"/>
-                </FlexPanel>
+            <!-- HEADER -->
+            <FlexPanel Direction="Row" Gap="16" Height="60" Background="#2D2D30" Padding="16">
+                <Label Text="◆ Modern Dashboard Pro" FontSize="20" Foreground="#007ACC" FontWeight="Bold"/>
+                <Label Text="✓ inModule Active (F12=Debug)" FontSize="14" Foreground="#00A551"/>
             </FlexPanel>
             
-            <!-- ═════════════════════════════════════════════ MAIN CONTENT ═════════════════════════════════════════════ -->
-            <FlexPanel Direction="Row" Gap="16" Padding="24" FlexGrow="1" Background="#1E1E1E">
+            <!-- MAIN CONTENT -->
+            <FlexPanel Direction="Row" Gap="16" Padding="24" Background="#1E1E1E">
                 
-                <!-- ════════════════════════ SIDEBAR ════════════════════════ -->
-                <AbsolutePanel Width="250" Background="#2D2D30" CornerRadius="8" Shadow="true" Padding="16" 
-                              BorderBrush="#555555" BorderThickness="1">
-                    
-                    <Label Text="NAVIGATION" FontSize="12" FontWeight="Bold" Foreground="#0E639C" Margin="0,0,0,12"/>
-                    
-                    <Button Text="📊 Dashboard" Width="100%" Height="40" Background="#007ACC" Foreground="#FFFFFF" 
-                           CornerRadius="6" Margin="0,0,0,8" Cursor="Hand" onClick="OnMenuClick"/>
-                    <Button Text="📈 Analytics" Width="100%" Height="40" Background="#3E3E42" Foreground="#CCCCCC" 
-                           CornerRadius="6" Margin="0,0,0,8" Cursor="Hand" onClick="OnMenuClick"/>
-                    <Button Text="👥 Users" Width="100%" Height="40" Background="#3E3E42" Foreground="#CCCCCC" 
-                           CornerRadius="6" Margin="0,0,0,8" Cursor="Hand" onClick="OnMenuClick"/>
-                    <Button Text="⚙ Settings" Width="100%" Height="40" Background="#3E3E42" Foreground="#CCCCCC" 
-                           CornerRadius="6" Margin="0,0,0,8" Cursor="Hand" onClick="OnMenuClick"/>
-                    
-                    <Label Text="ACCOUNT" FontSize="12" FontWeight="Bold" Foreground="#0E639C" Margin="0,24,0,12"/>
-                    
-                    <FlexPanel Direction="Row" AlignItems="Center" Gap="8" Margin="0,0,0,12">
-                        <Label Text="●" FontSize="20" Foreground="#00A551"/>
-                        <FlexPanel Direction="Column" Gap="2">
-                            <Label Text="Admin User" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF"/>
-                            <Label Text="Online" FontSize="10" Foreground="#CCCCCC"/>
-                        </FlexPanel>
-                    </FlexPanel>
-                    
-                    <Button Text="🚪 Logout" Width="100%" Height="36" Background="#F44747" Foreground="#FFFFFF" 
-                           CornerRadius="6" Cursor="Hand"/>
-                </AbsolutePanel>
+                <!-- SIDEBAR -->
+                <StackPanel Width="200" Background="#2D2D30" Padding="16">
+                    <Label Text="NAVIGATION" FontSize="12" Foreground="#0E639C" FontWeight="Bold" Margin="0,0,0,16"/>
+                    <Button Text="📊 Dashboard" Width="100%" Height="40" Background="#007ACC" Foreground="#FFFFFF" Margin="0,0,0,8"/>
+                    <Button Text="📈 Analytics" Width="100%" Height="40" Background="#3E3E42" Foreground="#CCCCCC" Margin="0,0,0,8"/>
+                    <Button Text="👥 Users" Width="100%" Height="40" Background="#3E3E42" Foreground="#CCCCCC" Margin="0,0,0,8"/>
+                    <Button Text="⚙ Settings" Width="100%" Height="40" Background="#3E3E42" Foreground="#CCCCCC" Margin="0,0,0,8"/>
+                </StackPanel>
                 
-                <!-- ════════════════════════ MAIN PANEL: GRID OF CARDS ════════════════════════ -->
-                <FlexPanel Direction="Column" Gap="16" FlexGrow="1">
+                <!-- MAIN PANEL: Cards Grid -->
+                <StackPanel Background="#1E1E1E">
                     
-                    <!-- TOP STATS ROW -->
-                    <FlexPanel Direction="Row" Gap="16" Wrap="true">
-                        
-                        <!-- STAT CARD 1 -->
-                        <Card Width="220" Height="120" Padding="16" Background="#2D2D30" CornerRadius="8" Shadow="true">
+                    <!-- TITLE -->
+                    <Label Text="Dashboard Overview" FontSize="18" Foreground="#FFFFFF" FontWeight="Bold" Margin="0,0,0,16"/>
+                    
+                    <!-- STATS CARDS -->
+                    <FlexPanel Direction="Row" Gap="16" Margin="0,0,0,16">
+                        <!-- CARD 1 -->
+                        <Card Width="220" Height="120" Padding="16" Background="#2D2D30">
                             <Label Text="Total Users" FontSize="12" Foreground="#0E639C" FontWeight="Bold" Margin="0,0,0,8"/>
-                            <Label Text="12,543" FontSize="28" Foreground="#FFFFFF" FontWeight="Bold"/>
-                            <ProgressBar Progress="82" ProgressColor="#007ACC" Margin="0,8,0,0"/>
+                            <Label Text="12,543" FontSize="24" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            <ProgressBar Progress="82" ProgressColor="#007ACC"/>
                         </Card>
                         
-                        <!-- STAT CARD 2 -->
-                        <Card Width="220" Height="120" Padding="16" Background="#2D2D30" CornerRadius="8" Shadow="true">
+                        <!-- CARD 2 -->
+                        <Card Width="220" Height="120" Padding="16" Background="#2D2D30">
                             <Label Text="Revenue" FontSize="12" Foreground="#00A551" FontWeight="Bold" Margin="0,0,0,8"/>
-                            <Label Text="$45,230" FontSize="28" Foreground="#FFFFFF" FontWeight="Bold"/>
-                            <ProgressBar Progress="65" ProgressColor="#00A551" Margin="0,8,0,0"/>
+                            <Label Text="$45,230" FontSize="24" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            <ProgressBar Progress="65" ProgressColor="#00A551"/>
                         </Card>
                         
-                        <!-- STAT CARD 3 -->
-                        <Card Width="220" Height="120" Padding="16" Background="#2D2D30" CornerRadius="8" Shadow="true">
-                            <Label Text="Alerts" FontSize="12" Foreground="#FF7A00" FontWeight="Bold" Margin="0,0,0,8"/>
-                            <Label Text="23" FontSize="28" Foreground="#FFFFFF" FontWeight="Bold"/>
-                            <ProgressBar Progress="45" ProgressColor="#FF7A00" Margin="0,8,0,0"/>
+                        <!-- CARD 3 -->
+                        <Card Width="220" Height="120" Padding="16" Background="#2D2D30">
+                            <Label Text="Active" FontSize="12" Foreground="#FF7A00" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <Label Text="8,950" FontSize="24" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            <ProgressBar Progress="90" ProgressColor="#FF7A00"/>
                         </Card>
                         
-                        <!-- STAT CARD 4 -->
-                        <Card Width="220" Height="120" Padding="16" Background="#2D2D30" CornerRadius="8" Shadow="true">
-                            <Label Text="Active Sessions" FontSize="12" Foreground="#F44747" FontWeight="Bold" Margin="0,0,0,8"/>
-                            <Label Text="8,950" FontSize="28" Foreground="#FFFFFF" FontWeight="Bold"/>
-                            <ProgressBar Progress="90" ProgressColor="#F44747" Margin="0,8,0,0"/>
+                        <!-- CARD 4 -->
+                        <Card Width="220" Height="120" Padding="16" Background="#2D2D30">
+                            <Label Text="Alerts" FontSize="12" Foreground="#F44747" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <Label Text="23" FontSize="24" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            <ProgressBar Progress="45" ProgressColor="#F44747"/>
                         </Card>
-                        
                     </FlexPanel>
                     
-                    <!-- SETTINGS & CONTROLS SECTION -->
-                    <Card Padding="20" Background="#2D2D30" CornerRadius="8" Shadow="true">
-                        <Label Text="Settings &amp; Controls" FontSize="16" Foreground="#FFFFFF" FontWeight="Bold" Margin="0,0,0,16"/>
+                    <!-- CONTROLS SECTION -->
+                    <Card Padding="20" Background="#2D2D30" Margin="0,0,0,16">
+                        <Label Text="Settings and Controls" FontSize="14" Foreground="#FFFFFF" FontWeight="Bold" Margin="0,0,0,12"/>
                         
-                        <FlexPanel Direction="Column" Gap="12">
-                            
-                            <!-- VOLUME SLIDER -->
-                            <FlexPanel Direction="Row" AlignItems="Center" Gap="12">
-                                <Label Text="Volume:" FontSize="12" Foreground="#CCCCCC" Width="80"/>
-                                <Slider Value="75" Minimum="0" Maximum="100" Step="5" Width="200" Height="24"/>
-                                <Label Text="75%" FontSize="12" Foreground="#CCCCCC"/>
-                            </FlexPanel>
-                            
-                            <!-- TOGGLES ROW -->
-                            <FlexPanel Direction="Row" AlignItems="Center" Gap="24">
-                                <FlexPanel Direction="Row" AlignItems="Center" Gap="8">
-                                    <Toggle IsChecked="true" Label="Enable Notifications"/>
-                                    <Label Text="Notifications" FontSize="12" Foreground="#CCCCCC"/>
-                                </FlexPanel>
-                                <FlexPanel Direction="Row" AlignItems="Center" Gap="8">
-                                    <Toggle IsChecked="true" Label="Auto Update"/>
-                                    <Label Text="Auto Update" FontSize="12" Foreground="#CCCCCC"/>
-                                </FlexPanel>
-                                <FlexPanel Direction="Row" AlignItems="Center" Gap="8">
-                                    <Toggle IsChecked="false" Label="Maintenance Mode"/>
-                                    <Label Text="Maintenance Mode" FontSize="12" Foreground="#CCCCCC"/>
-                                </FlexPanel>
-                            </FlexPanel>
-                            
+                        <!-- VOLUME SLIDER -->
+                        <FlexPanel Direction="Row" Gap="12" Margin="0,0,0,12">
+                            <Label Text="Volume:" FontSize="12" Foreground="#CCCCCC" Width="80"/>
+                            <Slider Value="75" Minimum="0" Maximum="100" Width="200" Height="24"/>
+                            <Label Text="75%" FontSize="12" Foreground="#CCCCCC"/>
+                        </FlexPanel>
+                        
+                        <!-- TOGGLES -->
+                        <FlexPanel Direction="Row" Gap="24" Margin="0,0,0,12">
+                            <Toggle IsChecked="true" Label="Notifications"/>
+                            <Toggle IsChecked="true" Label="Auto Update"/>
+                            <Toggle IsChecked="false" Label="Maintenance Mode"/>
                         </FlexPanel>
                     </Card>
                     
-                    <!-- TABS SECTION -->
-                    <Card Padding="20" Background="#2D2D30" CornerRadius="8" Shadow="true">
-                        <Tabs TabNames="Overview,Detailed Analytics,Performance,Logs">
-                            <FlexPanel Direction="Column" Gap="12" Margin="0,16,0,0">
-                                <Label Text="System Status: All Green ✓" FontSize="14" Foreground="#00A551" FontWeight="Bold"/>
-                                <Label Text="Last updated: 2 minutes ago" FontSize="12" Foreground="#CCCCCC"/>
-                                <ProgressBar Progress="100" ProgressColor="#00A551"/>
-                            </FlexPanel>
-                        </Tabs>
+                    <!-- HELP TEXT -->
+                    <Card Padding="16" Background="#1E3A3A">
+                        <Label Text="🐛 DEBUG MODE ACTIVE" FontSize="12" Foreground="#00FF00" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <Label Text="Press F12 to open Developer Console" FontSize="11" Foreground="#CCCCCC" Margin="0,0,0,4"/>
+                        <Label Text="• View: Module Tree Structure" FontSize="10" Foreground="#AAAAAA"/>
+                        <Label Text="• View: Real-time Debug Logs" FontSize="10" Foreground="#AAAAAA"/>
+                        <Label Text="• View: Element Conversions" FontSize="10" Foreground="#AAAAAA"/>
                     </Card>
                     
-                </FlexPanel>
+                </StackPanel>
                 
             </FlexPanel>
             

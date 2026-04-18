@@ -2,42 +2,126 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Xml;
+using System.Text;
 
 namespace Nimbus.WPF
 {
     /// <summary>
-    /// ModuleWindow - Displays custom UIModule hierarchy
-    /// Converts UIModule to WPF controls at runtime
+    /// ModuleWindow - Full 2D Custom Drawing Renderer for UIModule
+    /// Complete custom rendering using DrawingContext - NO WinForms controls
+    /// Pure geometric/text rendering with no WPF Button, TextBox, CheckBox, etc.
     /// </summary>
     public class ModuleWindow : Window
     {
         private WpfEngine _engine;
         private IUIModule _rootModule;
-        private Dictionary<string, FrameworkElement> _controlMap;
+        private DrawingCanvas _canvas;
+        private List<string> _debugLogs;
+        private bool _debugVisible = false;
+        private XmlNode _rootNode;
 
         public ModuleWindow(WpfEngine engine, XmlNode rootNode, XmlNode uiNode, IUIModule rootModule)
         {
             _engine = engine;
             _rootModule = rootModule;
-            _controlMap = new Dictionary<string, FrameworkElement>();
+            _rootNode = rootNode;
+            _debugLogs = new List<string>();
 
             // Configure window
             ConfigureWindow(rootNode);
 
-            // Build WPF controls from UIModule tree
+            // Create drawing canvas for 2D rendering
+            _canvas = new DrawingCanvas();
+            this.Content = _canvas;
+
+            // Add F12 key handler
+            this.KeyDown += (s, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.F12)
+                {
+                    ToggleDebugPanel();
+                    e.Handled = true;
+                }
+            };
+
+            AddDebugLog("[INIT] ModuleWindow created with 2D rendering - Press F12 for debug console");
+            
+            // Render the UI module tree
             if (_rootModule != null)
             {
-                FrameworkElement wpfContent = ConvertModuleToWpf(_rootModule);
-                if (wpfContent != null)
-                {
-                    this.Content = wpfContent;
-                    RegisterControlsFromWpf(wpfContent);
-                }
+                Rect bounds = new Rect(0, 0, this.Width, this.Height);
+                _canvas.RenderModule(_rootModule, bounds);
+                AddDebugLog("[RENDER] UI tree rendered successfully (2D drawing)");
+                AddDebugLog("[ROOT] Element: " + _rootModule.ElementType);
+            }
+        }
+
+        private void PaintDebugConsole()
+        {
+            if (!_debugVisible) return;
+            // Debug console will be rendered as overlay in DrawingCanvas._renderDebugConsole()
+        }
+
+        private void ToggleDebugPanel()
+        {
+            _debugVisible = !_debugVisible;
+            
+            if (_debugVisible)
+            {
+                AddDebugLog("[DEBUG] Console opened - F12 to close");
+            }
+            else
+            {
+                AddDebugLog("[DEBUG] Console closed");
+            }
+            
+            _canvas.InvalidateVisual();
+            _canvas.SetDebugVisible(_debugVisible);
+        }
+
+        private string BuildModuleTree(IUIModule module, int depth)
+        {
+            if (module == null) return "";
+            
+            string indent = new string(' ', depth * 2);
+            string tree = indent + "├─ [" + module.ElementType + "] id=" + module.Id;
+            
+            if (module is ModuleUIElement)
+            {
+                ModuleUIElement me = (ModuleUIElement)module;
+                tree += " | W=" + me.Width + " H=" + me.Height + " BG=" + me.Background;
+            }
+            
+            tree += "\n";
+
+            foreach (var child in module.Children)
+            {
+                tree += BuildModuleTree(child, depth + 1);
             }
 
-            _engine.Log("MODULE", "ModuleWindow created with root: " + (_rootModule != null ? _rootModule.ElementType : "null"));
+            return tree;
+        }
+
+        private void AddDebugLog(string message)
+        {
+            string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+            string logEntry = "[" + timestamp + "] " + message;
+            _debugLogs.Add(logEntry);
+            _canvas.AddDebugLog(logEntry);
+        }
+
+        public List<string> GetDebugLogs()
+        {
+            return _debugLogs;
+        }
+
+        public IUIModule GetRootModule()
+        {
+            return _rootModule;
         }
 
         /// <summary>
@@ -64,341 +148,1056 @@ namespace Nimbus.WPF
             catch { this.Background = new SolidColorBrush(Colors.White); }
         }
 
-        /// <summary>
-        /// Convert UIModule tree to WPF controls
-        /// </summary>
-        private FrameworkElement ConvertModuleToWpf(IUIModule module)
+        private Color ParseColor(string colorStr, Color defaultColor)
         {
-            if (module == null) return null;
-
-            FrameworkElement element = null;
-
-            switch (module.ElementType.ToLower())
-            {
-                case "grid":
-                    element = ConvertGrid((CustomUIGrid)module);
-                    break;
-                case "stackpanel":
-                    element = ConvertStackPanel((CustomUIStackPanel)module);
-                    break;
-                case "button":
-                    element = ConvertButton((CustomUIButton)module);
-                    break;
-                case "label":
-                case "text":
-                case "textblock":
-                    element = ConvertLabel((CustomUILabel)module);
-                    break;
-                default:
-                    element = ConvertGeneric((ModuleUIElement)module);
-                    break;
-            }
-
-            if (element != null && !string.IsNullOrEmpty(module.Id))
-            {
-                element.Name = module.Id;
-                _controlMap[module.Id] = element;
-            }
-
-            return element;
+            if (string.IsNullOrEmpty(colorStr)) return defaultColor;
+            try { return (Color)ColorConverter.ConvertFromString(colorStr); }
+            catch { return defaultColor; }
         }
 
-        /// <summary>
-        /// Convert Grid module
-        /// </summary>
-        private FrameworkElement ConvertGrid(CustomUIGrid gridModule)
+        private double ParseDouble(string value, double defaultValue)
         {
-            Grid grid = new Grid();
-            ApplyCommonProperties(grid, gridModule);
-
-            // Parse row definitions
-            if (!string.IsNullOrEmpty(gridModule.RowDefinitions))
-            {
-                string[] rows = gridModule.RowDefinitions.Split(',');
-                foreach (string row in rows)
-                {
-                    string rowDef = row.Trim();
-                    GridLength length = ParseGridLength(rowDef);
-                    grid.RowDefinitions.Add(new RowDefinition { Height = length });
-                }
-            }
-
-            // Parse column definitions
-            if (!string.IsNullOrEmpty(gridModule.ColumnDefinitions))
-            {
-                string[] cols = gridModule.ColumnDefinitions.Split(',');
-                foreach (string col in cols)
-                {
-                    string colDef = col.Trim();
-                    GridLength length = ParseGridLength(colDef);
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = length });
-                }
-            }
-
-            // Add children
-            int childIndex = 0;
-            foreach (var child in gridModule.Children)
-            {
-                FrameworkElement childElement = ConvertModuleToWpf(child);
-                if (childElement != null)
-                {
-                    grid.Children.Add(childElement);
-                    
-                    // Set Grid.Row and Grid.Column if specified
-                    if (child.Properties.ContainsKey("Grid.Row"))
-                    {
-                        int row;
-                        if (int.TryParse(child.Properties["Grid.Row"].ToString(), out row))
-                            Grid.SetRow(childElement, row);
-                    }
-                    
-                    if (child.Properties.ContainsKey("Grid.Column"))
-                    {
-                        int col;
-                        if (int.TryParse(child.Properties["Grid.Column"].ToString(), out col))
-                            Grid.SetColumn(childElement, col);
-                    }
-                    
-                    childIndex++;
-                }
-            }
-
-            return grid;
+            double result;
+            return double.TryParse(value, out result) ? result : defaultValue;
         }
 
-        /// <summary>
-        /// Convert StackPanel module
-        /// </summary>
-        private FrameworkElement ConvertStackPanel(CustomUIStackPanel stackModule)
-        {
-            StackPanel panel = new StackPanel();
-            ApplyCommonProperties(panel, stackModule);
-
-            if (stackModule.Orientation.ToLower() == "horizontal")
-                panel.Orientation = Orientation.Horizontal;
-            else
-                panel.Orientation = Orientation.Vertical;
-
-            if (stackModule.Spacing > 0)
-                panel.Margin = new Thickness(stackModule.Spacing);
-
-            // Add children
-            foreach (var child in stackModule.Children)
-            {
-                FrameworkElement childElement = ConvertModuleToWpf(child);
-                if (childElement != null)
-                {
-                    panel.Children.Add(childElement);
-                }
-            }
-
-            return panel;
-        }
-
-        /// <summary>
-        /// Convert Button module
-        /// </summary>
-        private FrameworkElement ConvertButton(CustomUIButton buttonModule)
-        {
-            Button button = new Button();
-            button.Content = buttonModule.Text;
-            ApplyCommonProperties(button, buttonModule);
-
-            // Add click handler if exists
-            if (buttonModule.OnClick != null)
-            {
-                button.Click += (s, e) => buttonModule.OnClick();
-            }
-
-            return button;
-        }
-
-        /// <summary>
-        /// Convert Label module
-        /// </summary>
-        private FrameworkElement ConvertLabel(CustomUILabel labelModule)
-        {
-            TextBlock textBlock = new TextBlock();
-            textBlock.Text = labelModule.Text;
-            textBlock.FontSize = labelModule.FontSize;
-            ApplyCommonProperties(textBlock, labelModule);
-
-            return textBlock;
-        }
-
-        /// <summary>
-        /// Convert generic module to Border
-        /// </summary>
-        private FrameworkElement ConvertGeneric(ModuleUIElement moduleElement)
-        {
-            Border border = new Border();
-            ApplyCommonProperties(border, moduleElement);
-
-            // If has text content, add it
-            if (!string.IsNullOrEmpty(moduleElement.Content))
-            {
-                TextBlock tb = new TextBlock { Text = moduleElement.Content };
-                border.Child = tb;
-            }
-
-            return border;
-        }
-
-        /// <summary>
-        /// Apply common properties to WPF element
-        /// </summary>
-        private void ApplyCommonProperties(FrameworkElement element, ModuleUIElement moduleElement)
-        {
-            // Background - only for Control and Panel
-            if (!string.IsNullOrEmpty(moduleElement.Background) && moduleElement.Background != "Transparent")
-            {
-                try
-                {
-                    Brush bgBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(moduleElement.Background));
-                    if (element is Control)
-                        ((Control)element).Background = bgBrush;
-                    else if (element is Panel)
-                        ((Panel)element).Background = bgBrush;
-                    else if (element is Border)
-                        ((Border)element).Background = bgBrush;
-                }
-                catch { }
-            }
-
-            // Foreground - only for Control
-            if (!string.IsNullOrEmpty(moduleElement.Foreground))
-            {
-                try
-                {
-                    if (element is Control)
-                        ((Control)element).Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(moduleElement.Foreground));
-                }
-                catch { }
-            }
-
-            // Size - parse string values (px, %, Auto, *)
-            if (moduleElement.Width != null && moduleElement.Width != "Auto")
-            {
-                double widthVal;
-                if (double.TryParse(moduleElement.Width, out widthVal))
-                    element.Width = widthVal;
-                else if (moduleElement.Width == "*")
-                    element.Width = double.NaN;  // Stretch
-            }
-            
-            if (moduleElement.Height != null && moduleElement.Height != "Auto")
-            {
-                double heightVal;
-                if (double.TryParse(moduleElement.Height, out heightVal))
-                    element.Height = heightVal;
-                else if (moduleElement.Height == "*")
-                    element.Height = double.NaN;  // Stretch
-            }
-
-            // Margins - parse comma-separated values
-            if (moduleElement.Margin != null && moduleElement.Margin != "0")
-            {
-                double marginVal;
-                if (double.TryParse(moduleElement.Margin, out marginVal) && marginVal > 0)
-                    element.Margin = new Thickness(marginVal);
-            }
-
-            // Alignment
-            element.HorizontalAlignment = ParseHorizontalAlignment(moduleElement.HorizontalAlignment);
-            element.VerticalAlignment = ParseVerticalAlignment(moduleElement.VerticalAlignment);
-        }
-
-        /// <summary>
-        /// Register all named controls from WPF tree
-        /// </summary>
-        private void RegisterControlsFromWpf(FrameworkElement root)
-        {
-            if (root == null) return;
-
-            if (!string.IsNullOrEmpty(root.Name))
-            {
-                _engine.RegisterControl(root.Name, root);
-            }
-
-            // Recursively register children
-            if (root is Panel)
-            {
-                Panel panel = (Panel)root;
-                foreach (UIElement child in panel.Children)
-                {
-                    if (child is FrameworkElement)
-                        RegisterControlsFromWpf((FrameworkElement)child);
-                }
-            }
-            else if (root is ContentControl)
-            {
-                ContentControl cc = (ContentControl)root;
-                if (cc.Content is FrameworkElement)
-                    RegisterControlsFromWpf((FrameworkElement)cc.Content);
-            }
-            else if (root is Decorator)
-            {
-                Decorator dec = (Decorator)root;
-                if (dec.Child is FrameworkElement)
-                    RegisterControlsFromWpf((FrameworkElement)dec.Child);
-            }
-        }
-
-        /// <summary>
-        /// Parse GridLength from string (*, 200, Auto)
-        /// </summary>
-        private GridLength ParseGridLength(string value)
-        {
-            if (value == "*")
-                return new GridLength(1, GridUnitType.Star);
-            if (value == "Auto")
-                return GridLength.Auto;
-            
-            double num;
-            if (double.TryParse(value, out num))
-                return new GridLength(num);
-            
-            return new GridLength(1, GridUnitType.Star);
-        }
-
-        /// <summary>
-        /// Parse HorizontalAlignment
-        /// </summary>
         private HorizontalAlignment ParseHorizontalAlignment(string value)
         {
-            switch (value.ToLower())
+            switch ((value ?? "Stretch").ToLower())
             {
                 case "left": return HorizontalAlignment.Left;
                 case "right": return HorizontalAlignment.Right;
                 case "center": return HorizontalAlignment.Center;
-                case "stretch": default: return HorizontalAlignment.Stretch;
+                default: return HorizontalAlignment.Stretch;
             }
         }
 
-        /// <summary>
-        /// Parse VerticalAlignment
-        /// </summary>
         private VerticalAlignment ParseVerticalAlignment(string value)
         {
-            switch (value.ToLower())
+            switch ((value ?? "Stretch").ToLower())
             {
                 case "top": return VerticalAlignment.Top;
                 case "bottom": return VerticalAlignment.Bottom;
                 case "center": return VerticalAlignment.Center;
-                case "stretch": default: return VerticalAlignment.Stretch;
+                default: return VerticalAlignment.Stretch;
             }
         }
 
-        /// <summary>
-        /// Get attribute from XML node
-        /// </summary>
         private string GetAttribute(XmlNode node, string name, string defaultValue)
         {
-            if (node == null || node.Attributes == null)
-                return defaultValue;
-            
+            if (node == null || node.Attributes == null) return defaultValue;
             XmlAttribute attr = node.Attributes[name];
             return attr != null ? attr.Value : defaultValue;
+        }
+    }
+
+    /// <summary>
+    /// DrawingCanvas - Custom DrawingVisual-based rendering for IUIModule
+    /// All rendering done with geometric shapes and text - ZERO WPF controls
+    /// </summary>
+    public class DrawingCanvas : Canvas
+    {
+        private DrawingVisual _visual;
+        private IUIModule _rootModule;
+        private List<string> _debugLogs = new List<string>();
+        private bool _debugVisible = false;
+        private const int DebugPanelHeight = 200;
+        private Dictionary<Rect, IUIModule> _clickableRegions = new Dictionary<Rect, IUIModule>();
+
+        public DrawingCanvas()
+        {
+            _visual = new DrawingVisual();
+            AddVisualChild(_visual);
+            
+            // Register mouse click handler
+            this.MouseDown += (s, e) =>
+            {
+                Point clickPos = e.GetPosition(this);
+                HandleClick(clickPos);
+            };
+        }
+
+        private void HandleClick(Point clickPos)
+        {
+            // Find which element was clicked
+            foreach (var kvp in _clickableRegions)
+            {
+                if (kvp.Key.Contains(clickPos))
+                {
+                    IUIModule module = kvp.Value;
+                    if (module is CustomUIButton)
+                    {
+                        CustomUIButton button = (CustomUIButton)module;
+                        AddDebugLog("[CLICK] Button clicked: " + (button.Id ?? "unnamed"));
+                        
+                        // Execute onclick if exists
+                        if (button.OnClick != null)
+                        {
+                            AddDebugLog("[ACTION] Executing button action");
+                            try { button.OnClick(); }
+                            catch { }
+                        }
+                    }
+                    else if (module is CustomUIToggle)
+                    {
+                        CustomUIToggle toggle = (CustomUIToggle)module;
+                        toggle.IsChecked = !toggle.IsChecked;
+                        AddDebugLog("[CLICK] Toggle clicked: " + (toggle.Id ?? "unnamed") + " = " + toggle.IsChecked);
+                        
+                        if (toggle.OnChange != null)
+                        {
+                            AddDebugLog("[ACTION] Executing toggle change action");
+                            try { toggle.OnChange(); }
+                            catch { }
+                        }
+                    }
+                    
+                    InvalidateVisual();
+                    break;
+                }
+            }
+        }
+
+        public void RenderModule(IUIModule module, Rect bounds)
+        {
+            _rootModule = module;
+            _clickableRegions.Clear();
+            DrawingContext dc = _visual.RenderOpen();
+            
+            // Draw background
+            dc.DrawRectangle(new SolidColorBrush(Colors.White), null, bounds);
+            
+            // Render the UI module tree
+            RenderModuleRecursive(dc, module, bounds);
+            
+            dc.Close();
+        }
+
+        public void SetDebugVisible(bool visible)
+        {
+            _debugVisible = visible;
+            InvalidateVisual();
+        }
+
+        public void AddDebugLog(string message)
+        {
+            _debugLogs.Add(message);
+        }
+
+        protected override void OnRender(DrawingContext drawingContext)
+        {
+            base.OnRender(drawingContext);
+            
+            _clickableRegions.Clear();
+            
+            if (_rootModule != null)
+            {
+                Rect bounds = new Rect(0, 0, this.ActualWidth, this.ActualHeight);
+                RenderModuleRecursive(drawingContext, _rootModule, bounds);
+            }
+
+            if (_debugVisible)
+            {
+                RenderDebugConsole(drawingContext);
+            }
+        }
+
+        private void RenderModuleRecursive(DrawingContext dc, IUIModule module, Rect bounds)
+        {
+            if (module == null) return;
+
+            string type = module.ElementType.ToLower();
+
+            switch (type)
+            {
+                // Core containers
+                case "flexpanel": RenderFlexPanel(dc, (CustomUIFlexPanel)module, bounds); break;
+                case "absolutepanel": RenderAbsolutePanel(dc, (CustomUIAbsolutePanel)module, bounds); break;
+                case "card": RenderCard(dc, (CustomUICard)module, bounds); break;
+                case "grid": RenderGrid(dc, (CustomUIGrid)module, bounds); break;
+                case "modal": RenderModal(dc, (CustomUIModal)module, bounds); break;
+                case "tabs": RenderTabs(dc, (CustomUITabs)module, bounds); break;
+                
+                // Core controls
+                case "button": RenderButton(dc, (CustomUIButton)module, bounds); break;
+                case "label":
+                case "text":
+                case "textblock": RenderLabel(dc, (CustomUILabel)module, bounds); break;
+                case "input":
+                case "textbox": RenderInput(dc, (CustomUIInput)module, bounds); break;
+                case "toggle":
+                case "checkbox": RenderToggle(dc, (CustomUIToggle)module, bounds); break;
+                case "slider": RenderSlider(dc, (CustomUISlider)module, bounds); break;
+                case "progressbar": RenderProgressBar(dc, (CustomUIProgressBar)module, bounds); break;
+                case "badge": RenderBadge(dc, (CustomUIBadge)module, bounds); break;
+
+                // UILayout Buttons
+                case "nimbusbutton": RenderNimbusButton(dc, (NimbusButton)module, bounds); break;
+                case "iconbutton": RenderNimbusIconButton(dc, (NimbusIconButton)module, bounds); break;
+                case "fab": RenderNimbusButton(dc, null, bounds); break;
+                case "togglebutton": RenderNimbusToggleButton(dc, (NimbusToggleButton)module, bounds); break;
+                case "linkbutton": RenderNimbusLinkButton(dc, (NimbusLinkButton)module, bounds); break;
+                case "dropdownbutton": RenderGenericContainer(dc, module, bounds); break;
+
+                // UILayout Inputs
+                case "nimbustextinput": RenderNimbusTextInput(dc, (NimbusTextInput)module, bounds); break;
+                case "nimbustextarea": RenderNimbusTextArea(dc, (NimbusTextArea)module, bounds); break;
+                case "searchinput": RenderNimbusSearchInput(dc, (NimbusSearchInput)module, bounds); break;
+                case "passwordinput": RenderNimbusPasswordInput(dc, (NimbusPasswordInput)module, bounds); break;
+                case "numberinput": RenderNimbusNumberInput(dc, (NimbusNumberInput)module, bounds); break;
+                case "combobox": RenderNimbusComboBox(dc, (NimbusComboBox)module, bounds); break;
+                case "switch": RenderNimbusSwitch(dc, (NimbusSwitch)module, bounds); break;
+                case "nimbuscheckbox": RenderNimbusCheckBox(dc, (NimbusCheckBox)module, bounds); break;
+                case "radiobutton": RenderNimbusRadioButton(dc, (NimbusRadioButton)module, bounds); break;
+
+                // UILayout Widgets
+                case "divider": RenderNimbusDivider(dc, (NimbusDivider)module, bounds); break;
+                case "avatar": RenderNimbusAvatar(dc, (NimbusAvatar)module, bounds); break;
+                case "chip": RenderNimbusChip(dc, (NimbusChip)module, bounds); break;
+
+                // Anything else: generic container (renders background + children)
+                default: RenderGenericContainer(dc, module, bounds); break;
+            }
+        }
+
+        private void RenderFlexPanel(DrawingContext dc, CustomUIFlexPanel panel, Rect bounds)
+        {
+            // Draw background
+            Color bgColor = ParseColor(panel.Background, Color.FromArgb(0, 255, 255, 255));
+            if (bgColor.A > 0)
+                dc.DrawRectangle(new SolidColorBrush(bgColor), null, bounds);
+
+            // Get padding/spacing
+            double padding = ParseDouble(panel.Padding ?? "0", 0);
+            double margin = ParseDouble(panel.Margin ?? "0", 5);
+            
+            // Calculate available space
+            double availableWidth = bounds.Width - (padding * 2);
+            double availableHeight = bounds.Height - (padding * 2);
+            
+            // Count total flex items and fixed items
+            double totalFixedWidth = 0;
+            double totalFixedHeight = 0;
+            int flexCount = 0;
+
+            foreach (var child in panel.Children)
+            {
+                if (panel.Direction.ToLower() == "row")
+                {
+                    double? cw = GetComponentWidth(child, availableWidth);
+                    if (cw.HasValue) totalFixedWidth += cw.Value;
+                    else flexCount++;
+                }
+                else
+                {
+                    double? ch = GetComponentHeight(child, availableHeight);
+                    if (ch.HasValue) totalFixedHeight += ch.Value;
+                    else flexCount++;
+                }
+            }
+
+            // Distribute flex space
+            double flexWidth = flexCount > 0 ? (availableWidth - totalFixedWidth - (margin * panel.Children.Count)) / flexCount : 0;
+            double flexHeight = flexCount > 0 ? (availableHeight - totalFixedHeight - (margin * panel.Children.Count)) / flexCount : 0;
+
+            // Render children
+            double childX = bounds.Left + padding;
+            double childY = bounds.Top + padding;
+
+            foreach (var child in panel.Children)
+            {
+                Rect childBounds;
+                if (panel.Direction.ToLower() == "row")
+                {
+                    double childWidth = GetComponentWidth(child, availableWidth) ?? flexWidth;
+                    childBounds = new Rect(childX, childY + margin, childWidth, availableHeight - (margin * 2));
+                    childX += childWidth + margin;
+                }
+                else
+                {
+                    double childHeight = GetComponentHeight(child, availableHeight) ?? flexHeight;
+                    childBounds = new Rect(childX + margin, childY, availableWidth - (margin * 2), childHeight);
+                    childY += childHeight + margin;
+                }
+
+                RenderModuleRecursive(dc, child, childBounds);
+            }
+        }
+
+        private void RenderAbsolutePanel(DrawingContext dc, CustomUIAbsolutePanel panel, Rect bounds)
+        {
+            Color bgColor = ParseColor(panel.Background, Colors.White);
+            if (bgColor.A > 0)
+                dc.DrawRectangle(new SolidColorBrush(bgColor), null, bounds);
+
+            foreach (var child in panel.Children)
+            {
+                double left = ParseDouble(child.Properties.ContainsKey("Left") ? child.Properties["Left"].ToString() : "0", 0);
+                double top = ParseDouble(child.Properties.ContainsKey("Top") ? child.Properties["Top"].ToString() : "0", 0);
+                double width = GetComponentWidth(child, bounds.Width) ?? 100;
+                double height = GetComponentHeight(child, bounds.Height) ?? 50;
+
+                Rect childBounds = new Rect(bounds.Left + left, bounds.Top + top, width, height);
+                RenderModuleRecursive(dc, child, childBounds);
+            }
+        }
+
+        private void RenderCard(DrawingContext dc, CustomUICard card, Rect bounds)
+        {
+            // Draw background with rounded corners
+            Color bgColor = ParseColor(card.Background, Colors.White);
+            dc.DrawRoundedRectangle(new SolidColorBrush(bgColor), null, bounds, card.CornerRadius, card.CornerRadius);
+
+            // Draw border
+            Color borderColor = ParseColor(card.BorderBrush, Colors.Gray);
+            dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(borderColor), 1), bounds, card.CornerRadius, card.CornerRadius);
+
+            // Render children with padding and spacing
+            double padding = 12;
+            double margin = 8;
+            Rect innerBounds = new Rect(bounds.Left + padding, bounds.Top + padding, bounds.Width - (padding * 2), bounds.Height - (padding * 2));
+            double childY = innerBounds.Top;
+
+            foreach (var child in card.Children)
+            {
+                double childHeight = GetComponentHeight(child, innerBounds.Height) ?? 40;
+                Rect childBounds = new Rect(innerBounds.Left, childY, innerBounds.Width, childHeight);
+                RenderModuleRecursive(dc, child, childBounds);
+                childY += childHeight + margin;
+            }
+        }
+
+        private void RenderButton(DrawingContext dc, CustomUIButton button, Rect bounds)
+        {
+            // Register as clickable
+            _clickableRegions[bounds] = button;
+            
+            // Draw button background
+            Color bgColor = ParseColor(button.Background, Color.FromArgb(255, 0, 122, 204));
+            dc.DrawRoundedRectangle(new SolidColorBrush(bgColor), null, bounds, 4, 4);
+
+            // Draw button border
+            dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(Colors.DarkGray), 1), bounds, 4, 4);
+
+            // Draw text
+            Color textColor = ParseColor(button.Foreground, Colors.White);
+            FormattedText text = new FormattedText(
+                button.Text ?? "Button",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Arial"),
+                14,
+                new SolidColorBrush(textColor)
+            );
+
+            double textX = bounds.Left + (bounds.Width - text.Width) / 2;
+            double textY = bounds.Top + (bounds.Height - text.Height) / 2;
+            dc.DrawText(text, new Point(textX, textY));
+        }
+
+        private void RenderLabel(DrawingContext dc, CustomUILabel label, Rect bounds)
+        {
+            Color textColor = ParseColor(label.Foreground, Colors.Black);
+            FormattedText text = new FormattedText(
+                label.Text ?? "",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Arial"),
+                label.FontSize,
+                new SolidColorBrush(textColor)
+            );
+
+            dc.DrawText(text, new Point(bounds.Left, bounds.Top));
+        }
+
+        private void RenderInput(DrawingContext dc, CustomUIInput input, Rect bounds)
+        {
+            // Draw text box background
+            Color bgColor = ParseColor(input.Background, Colors.White);
+            dc.DrawRectangle(new SolidColorBrush(bgColor), null, bounds);
+
+            // Draw border
+            Color borderColor = ParseColor(input.BorderBrush, Colors.Gray);
+            dc.DrawRectangle(null, new Pen(new SolidColorBrush(borderColor), 2), bounds);
+
+            // Draw text content
+            Color textColor = ParseColor(input.Foreground, Colors.Black);
+            FormattedText text = new FormattedText(
+                input.Value ?? "",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Arial"),
+                12,
+                new SolidColorBrush(textColor)
+            );
+
+            dc.DrawText(text, new Point(bounds.Left + 8, bounds.Top + 8));
+        }
+
+        private void RenderToggle(DrawingContext dc, CustomUIToggle toggle, Rect bounds)
+        {
+            // Register as clickable
+            _clickableRegions[bounds] = toggle;
+            
+            // Draw checkbox
+            Rect checkboxBounds = new Rect(bounds.Left, bounds.Top, 20, 20);
+            dc.DrawRectangle(new SolidColorBrush(Colors.White), new Pen(new SolidColorBrush(Colors.Gray), 1), checkboxBounds);
+
+            if (toggle.IsChecked)
+            {
+                // Draw checkmark
+                dc.DrawLine(new Pen(new SolidColorBrush(Colors.Green), 2), new Point(checkboxBounds.Left + 4, checkboxBounds.Top + 10),
+                    new Point(checkboxBounds.Left + 8, checkboxBounds.Top + 14));
+                dc.DrawLine(new Pen(new SolidColorBrush(Colors.Green), 2), new Point(checkboxBounds.Left + 8, checkboxBounds.Top + 14),
+                    new Point(checkboxBounds.Left + 16, checkboxBounds.Top + 4));
+            }
+
+            // Draw label
+            FormattedText label = new FormattedText(
+                toggle.Label ?? "",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Arial"),
+                12,
+                new SolidColorBrush(Colors.Black)
+            );
+
+            dc.DrawText(label, new Point(bounds.Left + 30, bounds.Top + 2));
+        }
+
+        private void RenderSlider(DrawingContext dc, CustomUISlider slider, Rect bounds)
+        {
+            // Draw track
+            Rect trackBounds = new Rect(bounds.Left, bounds.Top + bounds.Height / 2 - 2, bounds.Width, 4);
+            dc.DrawRectangle(new SolidColorBrush(Colors.LightGray), null, trackBounds);
+
+            // Draw thumb
+            double thumbPos = bounds.Left + (slider.Value - slider.Minimum) / (slider.Maximum - slider.Minimum) * bounds.Width;
+            Rect thumbBounds = new Rect(thumbPos - 6, bounds.Top + bounds.Height / 2 - 8, 12, 16);
+            dc.DrawEllipse(new SolidColorBrush(Colors.CornflowerBlue), new Pen(new SolidColorBrush(Colors.Gray), 1), 
+                new Point(thumbPos, bounds.Top + bounds.Height / 2), 6, 8);
+        }
+
+        private void RenderProgressBar(DrawingContext dc, CustomUIProgressBar bar, Rect bounds)
+        {
+            // Draw background
+            dc.DrawRectangle(new SolidColorBrush(Colors.LightGray), null, bounds);
+
+            // Draw progress
+            double progressWidth = (bar.Progress / 100.0) * bounds.Width;
+            Rect progressBounds = new Rect(bounds.Left, bounds.Top, progressWidth, bounds.Height);
+            Color progressColor = ParseColor(bar.ProgressColor, Color.FromArgb(255, 0, 122, 204));
+            dc.DrawRectangle(new SolidColorBrush(progressColor), null, progressBounds);
+
+            // Draw border
+            dc.DrawRectangle(null, new Pen(new SolidColorBrush(Colors.Gray), 1), bounds);
+        }
+
+        private void RenderBadge(DrawingContext dc, CustomUIBadge badge, Rect bounds)
+        {
+            // Draw badge background (rounded)
+            dc.DrawRoundedRectangle(new SolidColorBrush(Colors.CornflowerBlue), null, bounds, 12, 12);
+
+            // Draw text
+            FormattedText text = new FormattedText(
+                badge.Content ?? "",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Arial"),
+                12,
+                new SolidColorBrush(Colors.White)
+            );
+
+            double textX = bounds.Left + (bounds.Width - text.Width) / 2;
+            double textY = bounds.Top + (bounds.Height - text.Height) / 2;
+            dc.DrawText(text, new Point(textX, textY));
+        }
+
+        private void RenderModal(DrawingContext dc, CustomUIModal modal, Rect bounds)
+        {
+            if (!modal.IsVisible) return;
+
+            // Draw semi-transparent overlay
+            dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)), null, bounds);
+
+            // Draw modal box
+            Rect modalBounds = new Rect(bounds.Left + 50, bounds.Top + 50, bounds.Width - 100, bounds.Height - 100);
+            dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(230, 30, 30, 30)), null, modalBounds, 12, 12);
+
+            // Render children
+            double childY = modalBounds.Top + 16;
+            foreach (var child in modal.Children)
+            {
+                double childHeight = GetComponentHeight(child, modalBounds.Height) ?? 50;
+                Rect childBounds = new Rect(modalBounds.Left + 16, childY, modalBounds.Width - 32, childHeight);
+                RenderModuleRecursive(dc, child, childBounds);
+                childY += childHeight;
+            }
+        }
+
+        private void RenderTabs(DrawingContext dc, CustomUITabs tabs, Rect bounds)
+        {
+            // Draw tab headers
+            double tabWidth = bounds.Width / tabs.TabNames.Count;
+            for (int i = 0; i < tabs.TabNames.Count; i++)
+            {
+                Rect tabBounds = new Rect(bounds.Left + i * tabWidth, bounds.Top, tabWidth, 30);
+                dc.DrawRectangle(new SolidColorBrush(Colors.LightGray), null, tabBounds);
+                dc.DrawRectangle(null, new Pen(new SolidColorBrush(Colors.Gray), 1), tabBounds);
+
+                FormattedText tabText = new FormattedText(
+                    tabs.TabNames[i],
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight,
+                    new Typeface("Arial"),
+                    12,
+                    new SolidColorBrush(Colors.Black)
+                );
+
+                dc.DrawText(tabText, new Point(tabBounds.Left + 8, tabBounds.Top + 8));
+            }
+
+            // Draw tab content area
+            Rect contentBounds = new Rect(bounds.Left, bounds.Top + 30, bounds.Width, bounds.Height - 30);
+            dc.DrawRectangle(new SolidColorBrush(Colors.White), new Pen(new SolidColorBrush(Colors.Gray), 1), contentBounds);
+        }
+
+        private void RenderGrid(DrawingContext dc, CustomUIGrid grid, Rect bounds)
+        {
+            Color bgColor = ParseColor(grid.Background, Colors.White);
+            if (bgColor.A > 0)
+                dc.DrawRectangle(new SolidColorBrush(bgColor), null, bounds);
+
+            double childY = bounds.Top;
+            foreach (var child in grid.Children)
+            {
+                double childHeight = GetComponentHeight(child, bounds.Height) ?? 50;
+                Rect childBounds = new Rect(bounds.Left, childY, bounds.Width, childHeight);
+                RenderModuleRecursive(dc, child, childBounds);
+                childY += childHeight;
+            }
+        }
+
+        private void RenderGenericContainer(DrawingContext dc, IUIModule module, Rect bounds)
+        {
+            if (module is ModuleUIElement)
+            {
+                ModuleUIElement elem = (ModuleUIElement)module;
+                Color bgColor = ParseColor(elem.Background, Colors.White);
+                if (bgColor.A > 0)
+                    dc.DrawRectangle(new SolidColorBrush(bgColor), null, bounds);
+            }
+
+            foreach (var child in module.Children)
+            {
+                RenderModuleRecursive(dc, child, bounds);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // UILayout — Button Renderers
+        // ═══════════════════════════════════════════════════════════
+
+        private void RenderNimbusButton(DrawingContext dc, NimbusButton btn, Rect bounds)
+        {
+            if (btn == null) { RenderGenericContainer(dc, null, bounds); return; }
+            _clickableRegions[bounds] = btn;
+
+            string bgHex = btn.GetEffectiveBackground();
+            Color bg = ParseColor(bgHex, Color.FromArgb(255, 108, 99, 255));
+            double cr = btn.CornerRadius;
+            dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, bounds, cr, cr);
+
+            // Outlined border
+            string borderHex = btn.GetEffectiveBorder();
+            Color border = ParseColor(borderHex, Colors.Transparent);
+            if (border.A > 0)
+                dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(border), 1.5), bounds, cr, cr);
+
+            // Label
+            string label = btn.IsLoading ? btn.LoadingText : btn.Text;
+            Color fg = ParseColor(btn.TextColor ?? btn.Foreground, Colors.White);
+            FormattedText ft = new FormattedText(
+                label ?? "Button",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface(btn.FontFamily ?? "Segoe UI"),
+                btn.FontSize > 0 ? btn.FontSize : 14,
+                new SolidColorBrush(fg));
+            dc.DrawText(ft, new Point(
+                bounds.Left + (bounds.Width - ft.Width) / 2,
+                bounds.Top  + (bounds.Height - ft.Height) / 2));
+        }
+
+        private void RenderNimbusIconButton(DrawingContext dc, NimbusIconButton btn, Rect bounds)
+        {
+            if (btn == null) return;
+            _clickableRegions[bounds] = btn;
+            double cr = btn.IsCircular ? bounds.Width / 2 : btn.CornerRadius;
+            Color bg = ParseColor(btn.IsToggled ? btn.ToggledColor : btn.ButtonColor, Colors.Transparent);
+            if (bg.A > 0)
+                dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, bounds, cr, cr);
+            Color iconColor = ParseColor(btn.IsToggled ? btn.ToggledIconColor : btn.IconColor, Colors.White);
+            FormattedText icon = new FormattedText(
+                btn.Icon ?? "●",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"),
+                btn.IconSize > 0 ? btn.IconSize : 18,
+                new SolidColorBrush(iconColor));
+            dc.DrawText(icon, new Point(
+                bounds.Left + (bounds.Width - icon.Width) / 2,
+                bounds.Top  + (bounds.Height - icon.Height) / 2));
+        }
+
+        private void RenderNimbusToggleButton(DrawingContext dc, NimbusToggleButton btn, Rect bounds)
+        {
+            if (btn == null) return;
+            _clickableRegions[bounds] = btn;
+            Color bg = ParseColor(btn.IsToggled ? btn.ActiveColor : btn.InactiveColor, Color.FromArgb(255, 62, 62, 66));
+            dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, bounds, btn.CornerRadius, btn.CornerRadius);
+            Color fg = ParseColor(btn.IsToggled ? btn.ActiveTextColor : btn.InactiveTextColor, Colors.White);
+            string label = btn.IsToggled ? (btn.ActiveText ?? btn.Text) : btn.Text;
+            FormattedText ft = new FormattedText(
+                label ?? "Toggle",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), btn.FontSize > 0 ? btn.FontSize : 14,
+                new SolidColorBrush(fg));
+            dc.DrawText(ft, new Point(
+                bounds.Left + (bounds.Width - ft.Width) / 2,
+                bounds.Top  + (bounds.Height - ft.Height) / 2));
+        }
+
+        private void RenderNimbusLinkButton(DrawingContext dc, NimbusLinkButton btn, Rect bounds)
+        {
+            if (btn == null) return;
+            _clickableRegions[bounds] = btn;
+            Color fg = ParseColor(btn.IsVisited ? btn.VisitedColor : btn.LinkColor, Color.FromArgb(255, 108, 99, 255));
+            FormattedText ft = new FormattedText(
+                btn.Text ?? "Link",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), btn.FontSize > 0 ? btn.FontSize : 14,
+                new SolidColorBrush(fg));
+            dc.DrawText(ft, new Point(bounds.Left, bounds.Top + (bounds.Height - ft.Height) / 2));
+            if (btn.ShowUnderline)
+                dc.DrawLine(new Pen(new SolidColorBrush(fg), 1),
+                    new Point(bounds.Left, bounds.Top + (bounds.Height + ft.Height) / 2),
+                    new Point(bounds.Left + ft.Width, bounds.Top + (bounds.Height + ft.Height) / 2));
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // UILayout — Input Renderers
+        // ═══════════════════════════════════════════════════════════
+
+        private void RenderNimbusTextInput(DrawingContext dc, NimbusTextInput inp, Rect bounds)
+        {
+            if (inp == null) return;
+            _clickableRegions[bounds] = inp;
+            Color bg = ParseColor(inp.Background, Color.FromArgb(255, 45, 45, 48));
+            Color border = ParseColor(inp.GetEffectiveBorderColor(), Color.FromArgb(255, 85, 85, 85));
+            dc.DrawRoundedRectangle(new SolidColorBrush(bg), new Pen(new SolidColorBrush(border), 1.5),
+                bounds, inp.CornerRadius, inp.CornerRadius);
+            // Label (floating)
+            if (!string.IsNullOrEmpty(inp.Label))
+            {
+                Color lc = ParseColor(inp.LabelColor, Color.FromArgb(255, 158, 158, 158));
+                FormattedText lbl = new FormattedText(inp.Label,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 11, new SolidColorBrush(lc));
+                dc.DrawText(lbl, new Point(bounds.Left + 12, bounds.Top - 8));
+            }
+            // Value or placeholder
+            string display = string.IsNullOrEmpty(inp.Value) ? inp.Placeholder : inp.Value;
+            Color textColor = string.IsNullOrEmpty(inp.Value)
+                ? ParseColor(inp.PlaceholderColor, Color.FromArgb(255, 100, 100, 100))
+                : ParseColor(inp.Foreground, Colors.White);
+            FormattedText ft = new FormattedText(display ?? "",
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), inp.FontSize > 0 ? inp.FontSize : 14,
+                new SolidColorBrush(textColor));
+            dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + (bounds.Height - ft.Height) / 2));
+        }
+
+        private void RenderNimbusTextArea(DrawingContext dc, NimbusTextArea ta, Rect bounds)
+        {
+            if (ta == null) return;
+            Color bg = ParseColor(ta.Background, Color.FromArgb(255, 45, 45, 48));
+            Color border = ParseColor(ta.BorderBrush, Color.FromArgb(255, 85, 85, 85));
+            dc.DrawRoundedRectangle(new SolidColorBrush(bg), new Pen(new SolidColorBrush(border), 1.5),
+                bounds, ta.CornerRadius, ta.CornerRadius);
+            string display = string.IsNullOrEmpty(ta.Value) ? ta.Placeholder : ta.Value;
+            Color tc = string.IsNullOrEmpty(ta.Value)
+                ? Color.FromArgb(255, 100, 100, 100)
+                : ParseColor(ta.Foreground, Colors.White);
+            FormattedText ft = new FormattedText(display ?? "",
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), ta.FontSize > 0 ? ta.FontSize : 14,
+                new SolidColorBrush(tc));
+            ft.MaxTextWidth = bounds.Width - 24;
+            dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + 12));
+        }
+
+        private void RenderNimbusSearchInput(DrawingContext dc, NimbusSearchInput si, Rect bounds)
+        {
+            if (si == null) return;
+            _clickableRegions[bounds] = si;
+            Color bg = ParseColor(si.Background, Color.FromArgb(255, 45, 45, 48));
+            dc.DrawRoundedRectangle(new SolidColorBrush(bg),
+                new Pen(new SolidColorBrush(ParseColor(si.BorderBrush, Color.FromArgb(255, 85, 85, 85))), 1),
+                bounds, si.CornerRadius, si.CornerRadius);
+            // Search icon
+            if (si.ShowSearchIcon)
+            {
+                FormattedText icon = new FormattedText("🔍",
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 14, new SolidColorBrush(Color.FromArgb(255, 158, 158, 158)));
+                dc.DrawText(icon, new Point(bounds.Left + 10, bounds.Top + (bounds.Height - icon.Height) / 2));
+            }
+            string display = string.IsNullOrEmpty(si.Value) ? si.Placeholder : si.Value;
+            Color tc = string.IsNullOrEmpty(si.Value) ? Color.FromArgb(255, 100, 100, 100) : ParseColor(si.Foreground, Colors.White);
+            FormattedText ft = new FormattedText(display ?? "",
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), 14, new SolidColorBrush(tc));
+            dc.DrawText(ft, new Point(bounds.Left + 32, bounds.Top + (bounds.Height - ft.Height) / 2));
+        }
+
+        private void RenderNimbusPasswordInput(DrawingContext dc, NimbusPasswordInput pi, Rect bounds)
+        {
+            if (pi == null) return;
+            _clickableRegions[bounds] = pi;
+            Color bg = ParseColor(pi.Background, Color.FromArgb(255, 45, 45, 48));
+            dc.DrawRoundedRectangle(new SolidColorBrush(bg),
+                new Pen(new SolidColorBrush(ParseColor(pi.BorderBrush, Color.FromArgb(255, 85, 85, 85))), 1.5),
+                bounds, pi.CornerRadius, pi.CornerRadius);
+            string display = string.IsNullOrEmpty(pi.Value) ? pi.Placeholder
+                : (pi.IsPasswordVisible ? pi.Value : new string('●', pi.Value.Length));
+            Color tc = string.IsNullOrEmpty(pi.Value) ? Color.FromArgb(255, 100, 100, 100) : ParseColor(pi.Foreground, Colors.White);
+            FormattedText ft = new FormattedText(display ?? "",
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), pi.FontSize > 0 ? pi.FontSize : 14,
+                new SolidColorBrush(tc));
+            dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + (bounds.Height - ft.Height) / 2));
+            // Eye icon
+            if (pi.ShowToggleButton)
+            {
+                FormattedText eye = new FormattedText(pi.IsPasswordVisible ? "🙈" : "👁",
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 14, new SolidColorBrush(Color.FromArgb(255, 158, 158, 158)));
+                dc.DrawText(eye, new Point(bounds.Right - 30, bounds.Top + (bounds.Height - eye.Height) / 2));
+            }
+        }
+
+        private void RenderNimbusNumberInput(DrawingContext dc, NimbusNumberInput ni, Rect bounds)
+        {
+            if (ni == null) return;
+            _clickableRegions[bounds] = ni;
+            Color bg = ParseColor(ni.Background, Color.FromArgb(255, 45, 45, 48));
+            dc.DrawRoundedRectangle(new SolidColorBrush(bg),
+                new Pen(new SolidColorBrush(ParseColor(ni.BorderBrush, Color.FromArgb(255, 85, 85, 85))), 1.5),
+                bounds, ni.CornerRadius, ni.CornerRadius);
+            string display = ni.Value.ToString("F" + ni.DecimalPlaces) + (ni.Unit != null ? " " + ni.Unit : "");
+            FormattedText ft = new FormattedText(display,
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), ni.FontSize > 0 ? ni.FontSize : 14,
+                new SolidColorBrush(ParseColor(ni.Foreground, Colors.White)));
+            dc.DrawText(ft, new Point(bounds.Left + 10, bounds.Top + (bounds.Height - ft.Height) / 2));
+            if (ni.ShowStepper)
+            {
+                // + button
+                Rect plusR = new Rect(bounds.Right - 24, bounds.Top + 4, 20, bounds.Height - 8);
+                dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(255, 80, 80, 90)), null, plusR, 4, 4);
+                FormattedText plus = new FormattedText("+",
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 14, new SolidColorBrush(Colors.White));
+                dc.DrawText(plus, new Point(plusR.Left + (plusR.Width - plus.Width) / 2, plusR.Top + (plusR.Height - plus.Height) / 2));
+            }
+        }
+
+        private void RenderNimbusComboBox(DrawingContext dc, NimbusComboBox cb, Rect bounds)
+        {
+            if (cb == null) return;
+            _clickableRegions[bounds] = cb;
+            Color bg = ParseColor(cb.Background, Color.FromArgb(255, 45, 45, 48));
+            dc.DrawRoundedRectangle(new SolidColorBrush(bg),
+                new Pen(new SolidColorBrush(ParseColor(cb.BorderBrush, Color.FromArgb(255, 85, 85, 85))), 1.5),
+                bounds, cb.CornerRadius, cb.CornerRadius);
+            string display = cb.SelectedIndex >= 0 && cb.SelectedIndex < cb.Items.Count
+                ? cb.Items[cb.SelectedIndex].DisplayText : cb.Placeholder;
+            Color tc = cb.SelectedIndex < 0 ? Color.FromArgb(255, 100, 100, 100) : ParseColor(cb.Foreground, Colors.White);
+            FormattedText ft = new FormattedText(display ?? "",
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), cb.FontSize > 0 ? cb.FontSize : 14, new SolidColorBrush(tc));
+            dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + (bounds.Height - ft.Height) / 2));
+            // Arrow
+            FormattedText arrow = new FormattedText(cb.IsOpen ? "▲" : "▼",
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), 10, new SolidColorBrush(Color.FromArgb(255, 158, 158, 158)));
+            dc.DrawText(arrow, new Point(bounds.Right - 20, bounds.Top + (bounds.Height - arrow.Height) / 2));
+        }
+
+        private void RenderNimbusSwitch(DrawingContext dc, NimbusSwitch sw, Rect bounds)
+        {
+            if (sw == null) return;
+            _clickableRegions[bounds] = sw;
+            double trackW = 48, trackH = 24;
+            Rect trackR = new Rect(bounds.Left, bounds.Top + (bounds.Height - trackH) / 2, trackW, trackH);
+            Color trackColor = ParseColor(sw.IsOn ? sw.ActiveColor : sw.InactiveColor, Color.FromArgb(255, 85, 85, 85));
+            dc.DrawRoundedRectangle(new SolidColorBrush(trackColor), null, trackR, trackH / 2, trackH / 2);
+            // Thumb
+            double thumbX = sw.IsOn ? trackR.Right - trackH + 2 : trackR.Left + 2;
+            double thumbSz = trackH - 4;
+            dc.DrawEllipse(new SolidColorBrush(ParseColor(sw.ThumbColor, Colors.White)), null,
+                new Point(thumbX + thumbSz / 2, trackR.Top + trackH / 2), thumbSz / 2, thumbSz / 2);
+            // Label
+            if (!string.IsNullOrEmpty(sw.Label))
+            {
+                FormattedText lbl = new FormattedText(sw.Label,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 13, new SolidColorBrush(ParseColor(sw.Foreground, Colors.White)));
+                dc.DrawText(lbl, new Point(trackR.Right + 8, trackR.Top + (trackH - lbl.Height) / 2));
+            }
+        }
+
+        private void RenderNimbusCheckBox(DrawingContext dc, NimbusCheckBox cb, Rect bounds)
+        {
+            if (cb == null) return;
+            _clickableRegions[bounds] = cb;
+            double sz = cb.CheckSize > 0 ? cb.CheckSize : 20;
+            Rect box = new Rect(bounds.Left, bounds.Top + (bounds.Height - sz) / 2, sz, sz);
+            Color boxColor = cb.IsChecked
+                ? ParseColor(cb.CheckColor, Color.FromArgb(255, 108, 99, 255))
+                : ParseColor(cb.UncheckedColor, Color.FromArgb(255, 85, 85, 85));
+            dc.DrawRoundedRectangle(new SolidColorBrush(boxColor),
+                new Pen(new SolidColorBrush(boxColor), 1.5), box, 4, 4);
+            if (cb.IsChecked)
+            {
+                Pen ck = new Pen(new SolidColorBrush(ParseColor(cb.CheckmarkColor, Colors.White)), 2);
+                dc.DrawLine(ck, new Point(box.Left + 4, box.Top + sz / 2), new Point(box.Left + sz / 2.5, box.Bottom - 4));
+                dc.DrawLine(ck, new Point(box.Left + sz / 2.5, box.Bottom - 4), new Point(box.Right - 3, box.Top + 4));
+            }
+            if (!string.IsNullOrEmpty(cb.Label))
+            {
+                FormattedText lbl = new FormattedText(cb.Label,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 13, new SolidColorBrush(ParseColor(cb.Foreground, Colors.White)));
+                dc.DrawText(lbl, new Point(box.Right + 8, box.Top + (sz - lbl.Height) / 2));
+            }
+        }
+
+        private void RenderNimbusRadioButton(DrawingContext dc, NimbusRadioButton rb, Rect bounds)
+        {
+            if (rb == null) return;
+            _clickableRegions[bounds] = rb;
+            double sz = rb.RadioSize > 0 ? rb.RadioSize : 20;
+            Point center = new Point(bounds.Left + sz / 2, bounds.Top + (bounds.Height) / 2);
+            Color outerColor = rb.IsSelected
+                ? ParseColor(rb.ActiveColor, Color.FromArgb(255, 108, 99, 255))
+                : ParseColor(rb.InactiveColor, Color.FromArgb(255, 85, 85, 85));
+            dc.DrawEllipse(null, new Pen(new SolidColorBrush(outerColor), 2), center, sz / 2, sz / 2);
+            if (rb.IsSelected)
+                dc.DrawEllipse(new SolidColorBrush(outerColor), null, center, sz / 4, sz / 4);
+            if (!string.IsNullOrEmpty(rb.Label))
+            {
+                FormattedText lbl = new FormattedText(rb.Label,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 13, new SolidColorBrush(ParseColor(rb.Foreground, Colors.White)));
+                dc.DrawText(lbl, new Point(bounds.Left + sz + 8, center.Y - lbl.Height / 2));
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // UILayout — Widget Renderers
+        // ═══════════════════════════════════════════════════════════
+
+        private void RenderNimbusDivider(DrawingContext dc, NimbusDivider div, Rect bounds)
+        {
+            if (div == null) return;
+            Color c = ParseColor(div.DividerColor, Color.FromArgb(255, 62, 62, 66));
+            double thick = div.Thickness > 0 ? div.Thickness : 1;
+            if (div.Orientation == "Vertical")
+            {
+                double cx = bounds.Left + bounds.Width / 2;
+                dc.DrawLine(new Pen(new SolidColorBrush(c), thick),
+                    new Point(cx, bounds.Top), new Point(cx, bounds.Bottom));
+            }
+            else
+            {
+                double cy = bounds.Top + bounds.Height / 2;
+                dc.DrawLine(new Pen(new SolidColorBrush(c), thick),
+                    new Point(bounds.Left + div.Indent, cy), new Point(bounds.Right, cy));
+                if (!string.IsNullOrEmpty(div.DividerText))
+                {
+                    FormattedText ft = new FormattedText(div.DividerText,
+                        System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                        new Typeface("Segoe UI"), 12, new SolidColorBrush(Color.FromArgb(255, 158, 158, 158)));
+                    double tx = bounds.Left + (bounds.Width - ft.Width) / 2;
+                    dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(255, 30, 30, 30)), null,
+                        new Rect(tx - 4, cy - ft.Height / 2 - 2, ft.Width + 8, ft.Height + 4));
+                    dc.DrawText(ft, new Point(tx, cy - ft.Height / 2));
+                }
+            }
+        }
+
+        private void RenderNimbusAvatar(DrawingContext dc, NimbusAvatar av, Rect bounds)
+        {
+            if (av == null) return;
+            double sz = Math.Min(bounds.Width, bounds.Height);
+            Point center = new Point(bounds.Left + sz / 2, bounds.Top + sz / 2);
+            Color bg = ParseColor(av.AvatarColor, Color.FromArgb(255, 108, 99, 255));
+            if (av.Shape == "Circle")
+                dc.DrawEllipse(new SolidColorBrush(bg), null, center, sz / 2, sz / 2);
+            else
+                dc.DrawRoundedRectangle(new SolidColorBrush(bg), null,
+                    new Rect(bounds.Left, bounds.Top, sz, sz), av.Shape == "Rounded" ? 8 : 0, av.Shape == "Rounded" ? 8 : 0);
+            FormattedText initials = new FormattedText(
+                av.Initials ?? "N",
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface(new FontFamily("Segoe UI"), System.Windows.FontStyles.Normal, System.Windows.FontWeights.SemiBold, System.Windows.FontStretches.Normal),
+                sz * 0.38, new SolidColorBrush(Colors.White));
+            dc.DrawText(initials, new Point(center.X - initials.Width / 2, center.Y - initials.Height / 2));
+            // Status dot
+            if (!string.IsNullOrEmpty(av.StatusDot))
+            {
+                Color dotColor = ParseColor(av.StatusDotColor, Color.FromArgb(255, 76, 175, 80));
+                dc.DrawEllipse(new SolidColorBrush(dotColor), null,
+                    new Point(bounds.Left + sz - 4, bounds.Top + sz - 4), 5, 5);
+            }
+        }
+
+        private void RenderNimbusChip(DrawingContext dc, NimbusChip chip, Rect bounds)
+        {
+            if (chip == null) return;
+            _clickableRegions[bounds] = chip;
+            Color bg = ParseColor(chip.ChipColor, Color.FromArgb(255, 62, 62, 66));
+            Color fg = ParseColor(chip.ChipTextColor, Colors.White);
+            if (chip.ChipStyle == "Outlined")
+            {
+                dc.DrawRoundedRectangle(new SolidColorBrush(Colors.Transparent),
+                    new Pen(new SolidColorBrush(bg), 1.5), bounds, bounds.Height / 2, bounds.Height / 2);
+            }
+            else
+            {
+                dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, bounds, bounds.Height / 2, bounds.Height / 2);
+            }
+            FormattedText ft = new FormattedText(chip.Text ?? "",
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), chip.FontSize > 0 ? chip.FontSize : 13, new SolidColorBrush(fg));
+            double offsetX = chip.IsDeletable ? bounds.Left + (bounds.Width - ft.Width - 20) / 2 : bounds.Left + (bounds.Width - ft.Width) / 2;
+            dc.DrawText(ft, new Point(offsetX, bounds.Top + (bounds.Height - ft.Height) / 2));
+            if (chip.IsDeletable)
+            {
+                FormattedText x = new FormattedText("×",
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 14, new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)));
+                dc.DrawText(x, new Point(bounds.Right - 16, bounds.Top + (bounds.Height - x.Height) / 2));
+            }
+        }
+
+        private void RenderDebugConsole(DrawingContext drawingContext)
+        {
+            // Draw debug panel at bottom
+            Rect panelBounds = new Rect(0, this.ActualHeight - DebugPanelHeight, this.ActualWidth, DebugPanelHeight);
+            
+            // Background
+            drawingContext.DrawRectangle(new SolidColorBrush(Color.FromArgb(240, 30, 30, 30)), null, panelBounds);
+            
+            // Border
+            drawingContext.DrawRectangle(null, new Pen(new SolidColorBrush(Colors.Cyan), 2), panelBounds);
+            
+            // Header
+            FormattedText header = new FormattedText(
+                "DEBUG CONSOLE (F12 to close)",
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface("Consolas"),
+                12,
+                new SolidColorBrush(Colors.Cyan)
+            );
+            drawingContext.DrawText(header, new Point(panelBounds.Left + 10, panelBounds.Top + 5));
+
+            // Draw log entries
+            double logY = panelBounds.Top + 30;
+            int startLog = Math.Max(0, _debugLogs.Count - 6);
+
+            for (int i = startLog; i < _debugLogs.Count && logY < panelBounds.Bottom; i++)
+            {
+                FormattedText logText = new FormattedText(
+                    _debugLogs[i],
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight,
+                    new Typeface("Consolas"),
+                    9,
+                    new SolidColorBrush(Colors.LimeGreen)
+                );
+                drawingContext.DrawText(logText, new Point(panelBounds.Left + 10, logY));
+                logY += 20;
+            }
+        }
+
+        private double? GetComponentWidth(IUIModule module, double parentWidth)
+        {
+            if (module is ModuleUIElement)
+            {
+                string widthStr = ((ModuleUIElement)module).Width;
+                if (widthStr != null)
+                {
+                    if (widthStr == "*") return parentWidth;
+                    if (widthStr.EndsWith("%"))
+                    {
+                        double pct = ParseDouble(widthStr.Substring(0, widthStr.Length - 1), 100);
+                        return parentWidth * pct / 100;
+                    }
+                    double val;
+                    if (double.TryParse(widthStr, out val)) return val;
+                }
+            }
+            return null;
+        }
+
+        private double? GetComponentHeight(IUIModule module, double parentHeight)
+        {
+            if (module is ModuleUIElement)
+            {
+                string heightStr = ((ModuleUIElement)module).Height;
+                if (heightStr != null)
+                {
+                    if (heightStr == "*") return parentHeight;
+                    if (heightStr.EndsWith("%"))
+                    {
+                        double pct = ParseDouble(heightStr.Substring(0, heightStr.Length - 1), 100);
+                        return parentHeight * pct / 100;
+                    }
+                    double val;
+                    if (double.TryParse(heightStr, out val)) return val;
+                }
+            }
+            return null;
+        }
+
+        private Color ParseColor(string colorStr, Color defaultColor)
+        {
+            if (string.IsNullOrEmpty(colorStr)) return defaultColor;
+            try { return (Color)ColorConverter.ConvertFromString(colorStr); }
+            catch { return defaultColor; }
+        }
+
+        private double ParseDouble(string value, double defaultValue)
+        {
+            double result;
+            return double.TryParse(value, out result) ? result : defaultValue;
+        }
+
+        protected override int VisualChildrenCount
+        {
+            get { return 1; }
+        }
+
+        protected override Visual GetVisualChild(int index)
+        {
+            if (index == 0) return _visual;
+            throw new ArgumentOutOfRangeException("index");
         }
     }
 }

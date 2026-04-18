@@ -410,10 +410,12 @@ namespace Nimbus.WPF
     {
         public bool IsChecked { get; set; }
         public string Label { get; set; }
+        public Action OnChange { get; set; }
         public CustomUIToggle(string id) : base(id, "Toggle")
         {
             IsChecked = false;
             Label = "Toggle";
+            OnChange = null;
             Width = "24";
             Height = "24";
             CornerRadius = 4;
@@ -561,4 +563,321 @@ namespace Nimbus.WPF
             Console.WriteLine("[Tooltip] Position=" + Position + " Content=" + Content);
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  UIModuleFactory - Creates any UIModule by element type name
+    //  Central factory integrating ALL UILayout components
+    // ═══════════════════════════════════════════════════════════════════════
+    public static class UIModuleFactory
+    {
+        /// <summary>
+        /// Create a UIModule element by type name.
+        /// Supports all built-in + UILayout button, input, widget, layout types.
+        /// </summary>
+        public static IUIModule Create(string elementType, string elementId)
+        {
+            switch (elementType.ToLower())
+            {
+                // ══════════════ CORE CONTAINERS ══════════════
+                case "grid":                return new CustomUIGrid(elementId);
+                case "stackpanel":          return new CustomUIStackPanel(elementId);
+                case "flexpanel":           return new CustomUIFlexPanel(elementId);
+                case "absolutepanel":       return new CustomUIAbsolutePanel(elementId);
+                case "card":                return new CustomUICard(elementId);
+                case "modal":               return new CustomUIModal(elementId);
+
+                // ══════════════ CORE CONTROLS ══════════════
+                case "button":              return new CustomUIButton(elementId);
+                case "label":
+                case "text":
+                case "textblock":           return new CustomUILabel(elementId);
+                case "toggle":
+                case "checkbox":            return new CustomUIToggle(elementId);
+                case "slider":              return new CustomUISlider(elementId);
+                case "progressbar":         return new CustomUIProgressBar(elementId);
+                case "input":
+                case "textbox":             return new CustomUIInput(elementId);
+                case "tabs":                return new CustomUITabs(elementId);
+                case "badge":               return new CustomUIBadge(elementId);
+                case "tooltip":             return new CustomUITooltip(elementId);
+
+                // ══════════════ UILAYOUT BUTTONS ══════════════
+                case "nimbusbutton":        return new NimbusButton(elementId);
+                case "iconbutton":          return new NimbusIconButton(elementId);
+                case "fab":
+                case "floatingactionbutton": return new NimbusFloatingActionButton(elementId);
+                case "dropdownbutton":      return new NimbusDropdownButton(elementId);
+                case "togglebutton":        return new NimbusToggleButton(elementId);
+                case "buttongroup":
+                case "segmentedbutton":     return new NimbusButtonGroup(elementId);
+                case "linkbutton":
+                case "hyperlink":           return new NimbusLinkButton(elementId);
+
+                // ══════════════ UILAYOUT INPUTS ══════════════
+                case "nimbustextinput":
+                case "nimbuinput":
+                case "textfield":           return new NimbusTextInput(elementId);
+                case "textarea":
+                case "nimbustextarea":      return new NimbusTextArea(elementId);
+                case "searchinput":
+                case "search":              return new NimbusSearchInput(elementId);
+                case "passwordinput":
+                case "password":            return new NimbusPasswordInput(elementId);
+                case "numberinput":
+                case "number":              return new NimbusNumberInput(elementId);
+                case "combobox":
+                case "select":
+                case "dropdown":            return new NimbusComboBox(elementId);
+                case "switch":
+                case "nimbusswitch":        return new NimbusSwitch(elementId);
+                case "nimbuscheckbox":      return new NimbusCheckBox(elementId);
+                case "radiobutton":
+                case "radio":               return new NimbusRadioButton(elementId);
+                case "radiogroup":          return new NimbusRadioGroup(elementId);
+                case "rangeslider":         return new NimbusRangeSlider(elementId);
+                case "colorpicker":         return new NimbusColorPicker(elementId);
+                case "datepicker":          return new NimbusDatePicker(elementId);
+
+                // ══════════════ UILAYOUT WIDGETS ══════════════
+                case "divider":
+                case "separator":           return new NimbusDivider(elementId);
+                case "avatar":              return new NimbusAvatar(elementId);
+                case "chip":
+                case "tag":                 return new NimbusChip(elementId);
+                case "listtile":
+                case "listitem":            return new NimbusListTile(elementId);
+                case "snackbar":
+                case "toast":               return new NimbusSnackbar(elementId);
+                case "appbar":
+                case "toolbar":
+                case "navbar":              return new NimbusAppBar(elementId);
+                case "bottomnav":
+                case "bottomnavigation":    return new NimbusBottomNav(elementId);
+                case "expander":
+                case "accordion":           return new NimbusExpander(elementId);
+                case "dialog":
+                case "alertdialog":         return new NimbusDialog(elementId);
+                case "circularprogress":
+                case "spinner":
+                case "loading":             return new NimbusCircularProgress(elementId);
+                case "image":
+                case "img":                 return new NimbusImage(elementId);
+                case "scrollview":
+                case "scroll":              return new NimbusScrollView(elementId);
+                case "datatable":
+                case "table":               return new NimbusDataTable(elementId);
+                case "treeview":
+                case "tree":                return new NimbusTreeView(elementId);
+                case "richtext":            return new NimbusRichText(elementId);
+                case "skeleton":            return new NimbusSkeleton(elementId);
+                case "stepper":             return new NimbusStepper(elementId);
+
+                // ══════════════ UILAYOUT LAYOUTS ══════════════
+                case "wrappanel":
+                case "flow":                return new NimbusWrapPanel(elementId);
+                case "gridlayout":
+                case "cssgrid":             return new NimbusGridLayout(elementId);
+                case "container":           return new NimbusContainer(elementId);
+                case "spacer":              return new NimbusSpacer(elementId);
+                case "sizedbox":            return new NimbusSizedBox(elementId);
+                case "center":              return new NimbusCenter(elementId);
+                case "aspectratio":         return new NimbusAspectRatio(elementId);
+
+                default:
+                    // Fallback: create generic ModuleUIElement
+                    return new ModuleUIElement(elementId, elementType);
+            }
+        }
+
+        /// <summary>
+        /// Get available element type names for documentation/tooling
+        /// </summary>
+        public static List<string> GetAvailableTypes()
+        {
+            return new List<string>
+            {
+                // Core
+                "Grid", "StackPanel", "FlexPanel", "AbsolutePanel", "Card", "Modal",
+                "Button", "Label", "Toggle", "Slider", "ProgressBar", "Input", "Tabs", "Badge", "Tooltip",
+                // Buttons
+                "NimbusButton", "IconButton", "FAB", "DropdownButton", "ToggleButton", "ButtonGroup", "LinkButton",
+                // Inputs
+                "NimbusTextInput", "TextArea", "SearchInput", "PasswordInput", "NumberInput",
+                "ComboBox", "Switch", "NimbusCheckBox", "RadioButton", "RadioGroup",
+                "RangeSlider", "ColorPicker", "DatePicker",
+                // Widgets
+                "Divider", "Avatar", "Chip", "ListTile", "Snackbar", "AppBar", "BottomNav",
+                "Expander", "Dialog", "CircularProgress", "Image", "ScrollView",
+                "DataTable", "TreeView", "RichText", "Skeleton", "Stepper",
+                // Layouts
+                "WrapPanel", "GridLayout", "Container", "Spacer", "SizedBox", "Center", "AspectRatio"
+            };
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  UIModuleExtensions - Helper methods for building UI trees
+    // ═══════════════════════════════════════════════════════════════════════
+    public static class UIModuleExtensions
+    {
+        /// <summary>Fluent method: Set a property and return the module</summary>
+        public static T SetProp<T>(this T module, string name, object value) where T : IUIModule
+        {
+            module.SetProperty(name, value);
+            return module;
+        }
+
+        /// <summary>Fluent method: Add a child and return the parent</summary>
+        public static T WithChild<T>(this T parent, IUIModule child) where T : IUIModule
+        {
+            parent.AddChild(child);
+            return parent;
+        }
+
+        /// <summary>Fluent method: Add multiple children and return the parent</summary>
+        public static T WithChildren<T>(this T parent, params IUIModule[] children) where T : IUIModule
+        {
+            foreach (var child in children)
+                parent.AddChild(child);
+            return parent;
+        }
+
+        /// <summary>Find a child element by ID recursively</summary>
+        public static IUIModule FindById(this IUIModule root, string id)
+        {
+            if (root == null) return null;
+            if (root.Id == id) return root;
+            foreach (var child in root.Children)
+            {
+                var found = FindById(child, id);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        /// <summary>Find all elements matching a predicate recursively</summary>
+        public static List<IUIModule> FindAll(this IUIModule root, Func<IUIModule, bool> predicate)
+        {
+            List<IUIModule> results = new List<IUIModule>();
+            if (root == null) return results;
+            if (predicate(root)) results.Add(root);
+            foreach (var child in root.Children)
+                results.AddRange(FindAll(child, predicate));
+            return results;
+        }
+
+        /// <summary>Find all elements of a specific type recursively</summary>
+        public static List<T> FindByType<T>(this IUIModule root) where T : class, IUIModule
+        {
+            List<T> results = new List<T>();
+            if (root == null) return results;
+            T typed = root as T;
+            if (typed != null) results.Add(typed);
+            foreach (var child in root.Children)
+                results.AddRange(FindByType<T>(child));
+            return results;
+        }
+
+        /// <summary>Get the total count of all descendants</summary>
+        public static int DescendantCount(this IUIModule root)
+        {
+            if (root == null) return 0;
+            int count = root.Children.Count;
+            foreach (var child in root.Children)
+                count += DescendantCount(child);
+            return count;
+        }
+
+        /// <summary>Apply theme colors from NimbusThemeData to a ModuleUIElement</summary>
+        public static void ApplyTheme(this ModuleUIElement element, NimbusThemeData theme)
+        {
+            if (element == null || theme == null) return;
+            element.Foreground = theme.OnSurface.ToHex();
+            element.FontFamily = theme.FontFamily;
+            element.FontSize = theme.DefaultFontSize;
+            element.CornerRadius = theme.DefaultCornerRadius;
+            element.AccentColor = theme.PrimaryColor.ToHex();
+        }
+
+        // ─────────── Quick Builder Helpers ───────────
+
+        /// <summary>Create a quick NimbusButton</summary>
+        public static NimbusButton QuickButton(string id, string text, Action onClick)
+        {
+            NimbusButton btn = new NimbusButton(id);
+            btn.Text = text;
+            btn.OnClick = onClick;
+            return btn;
+        }
+
+        /// <summary>Create a quick NimbusTextInput</summary>
+        public static NimbusTextInput QuickInput(string id, string label, string placeholder)
+        {
+            NimbusTextInput input = new NimbusTextInput(id);
+            input.Label = label;
+            input.Placeholder = placeholder;
+            return input;
+        }
+
+        /// <summary>Create a quick Row (horizontal flex)</summary>
+        public static CustomUIFlexPanel QuickRow(string id, double gap)
+        {
+            CustomUIFlexPanel panel = new CustomUIFlexPanel(id);
+            panel.Direction = "Row";
+            panel.Gap = gap.ToString();
+            panel.AlignItems = "Center";
+            return panel;
+        }
+
+        /// <summary>Create a quick Column (vertical flex)</summary>
+        public static CustomUIFlexPanel QuickColumn(string id, double gap)
+        {
+            CustomUIFlexPanel panel = new CustomUIFlexPanel(id);
+            panel.Direction = "Column";
+            panel.Gap = gap.ToString();
+            return panel;
+        }
+
+        /// <summary>Create a quick Card with theme</summary>
+        public static CustomUICard QuickCard(string id, NimbusThemeData theme)
+        {
+            CustomUICard card = new CustomUICard(id);
+            if (theme != null)
+            {
+                card.Background = theme.SurfaceColor.ToHex();
+                card.CornerRadius = theme.DefaultCornerRadius;
+            }
+            return card;
+        }
+
+        /// <summary>Create a quick Label</summary>
+        public static CustomUILabel QuickLabel(string id, string text, NimbusTextStyle style)
+        {
+            CustomUILabel label = new CustomUILabel(id);
+            label.Text = text;
+            if (style != null)
+            {
+                label.FontSize = style.FontSize;
+                label.Foreground = style.Color;
+            }
+            return label;
+        }
+
+        /// <summary>Create a quick Divider</summary>
+        public static NimbusDivider QuickDivider(string id)
+        {
+            return new NimbusDivider(id);
+        }
+
+        /// <summary>Create a quick Switch</summary>
+        public static NimbusSwitch QuickSwitch(string id, string label, bool isOn, Action<bool> onToggle)
+        {
+            NimbusSwitch sw = new NimbusSwitch(id);
+            sw.Label = label;
+            sw.IsOn = isOn;
+            sw.OnToggle = onToggle;
+            return sw;
+        }
+    }
 }
+

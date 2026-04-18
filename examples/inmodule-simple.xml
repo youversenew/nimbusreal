@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<App Name="Simple inModule Test"
+     Width="600"
+     Height="400"
+     inModule="true">
+
+    <Components>
+        <Colors>
+            <Color Name="Primary" Value="#007ACC"/>
+            <Color Name="Dark" Value="#1E1E1E"/>
+            <Color Name="Card" Value="#2D2D30"/>
+        </Colors>
+    </Components>
+
+    <Logic>
+        <Var Name="clickCount" Value="0" Type="int"/>
+        <Handler Name="OnButtonClick">
+            <Alert Message="Button clicked! - Press F12 to see debug info"/>
+        </Handler>
+    </Logic>
+
+    <UI>
+        <FlexPanel Direction="Column" Gap="16" Padding="24" Background="#1E1E1E" Width="600" Height="400">
+            
+            <Label Text="✓ inModule Rendering Test" FontSize="24" Foreground="#007ACC" FontWeight="Bold"/>
+            <Label Text="Press F12 for Debug Console" FontSize="12" Foreground="#00A551"/>
+            
+            <Card Padding="20" Background="#2D2D30">
+                <Label Text="This is a Card component" FontSize="14" Foreground="#FFFFFF" FontWeight="Bold" Margin="0,0,0,12"/>
+                <Label Text="✓ FlexPanel working" FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,4"/>
+                <Label Text="✓ Card working" FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,4"/>
+                <Label Text="✓ Label working" FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,4"/>
+                <Label Text="✓ All custom colors loaded" FontSize="12" Foreground="#CCCCCC"/>
+            </Card>
+            
+            <FlexPanel Direction="Row" Gap="12">
+                <Button Text="Click Me" Width="100" Height="40" Background="#007ACC" Foreground="#FFFFFF" onClick="OnButtonClick"/>
+                <Slider Value="50" Minimum="0" Maximum="100" Width="200" Height="24"/>
+                <Toggle IsChecked="true" Label="Enable Feature"/>
+            </FlexPanel>
+            
+            <ProgressBar Progress="75" ProgressColor="#00A551" Height="12"/>
+            
+            <Label Text="✓ Everything initialized! Open DevTools with F12" FontSize="11" Foreground="#00FF00" FontStyle="Normal"/>
+            
+        </FlexPanel>
+    </UI>
+</App>

@@ -67,6 +67,12 @@ if exist "plugins" (
 /r:"%WPF%\WindowsBase.dll" ^
 /r:"%WPF%\PresentationCore.dll" ^
 /r:"%WPF%\PresentationFramework.dll" ^
+UILayout\Colors.cs ^
+UILayout\Buttons.cs ^
+UILayout\Inputs.cs ^
+UILayout\Widgets.cs ^
+UILayout\Typography.cs ^
+UILayout\Layouts.cs ^
 WpfEngine.cs ^
 WpfUI.cs ^
 XamlRenderer.cs ^

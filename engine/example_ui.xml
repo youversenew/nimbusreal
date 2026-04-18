@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nimbus UI Layout - Full Component Showcase
+  Demonstrates all UILayout components: Buttons, Inputs, Widgets
+  Load this via: ModuleRenderer.Render("example_ui.xml")
+-->
+  <FlexPanel id="root" direction="Column" gap="0"
+           background="#121212" width="Auto" height="Auto">
+
+  <!-- ═══════════════ APP BAR ═══════════════ -->
+  <AppBar id="topbar" title="Nimbus UI Showcase"
+          leadingIcon="☰" appBarStyle="Standard"
+          background="#1E1E1E" foreground="#FFFFFF"
+          height="56" width="Auto" shadow="true" />
+
+  <!-- ═══════════════ SCROLLABLE BODY ═══════════════ -->
+  <ScrollView id="body" scrollDirection="Vertical" showScrollbar="true"
+              width="Auto" height="Auto" background="Transparent">
+
+    <FlexPanel id="content" direction="Column" gap="24"
+               padding="24" background="Transparent">
+
+      <!-- ─── SECTION: TYPOGRAPHY ─── -->
+      <Label id="sec-typography" text="Typography"
+             textStyle="headlineSmall" foreground="#E0E0E0"
+             margin="0,0,0,8" />
+      <Divider id="div1" />
+
+      <FlexPanel id="type-samples" direction="Column" gap="8" background="Transparent">
+        <Label id="t1" text="Display Large"   textStyle="displayLarge"  foreground="#FFFFFF" />
+        <Label id="t2" text="Headline Medium" textStyle="headlineMedium" foreground="#FFFFFF" />
+        <Label id="t3" text="Title Large"     textStyle="titleLarge"    foreground="#FFFFFF" />
+        <Label id="t4" text="Body Medium"     textStyle="bodyMedium"    foreground="#E0E0E0" />
+        <Label id="t5" text="Label Small"     textStyle="labelSmall"    foreground="#9E9E9E" />
+        <Label id="t6" text="Caption text"    textStyle="caption"       foreground="#9E9E9E" />
+      </FlexPanel>
+
+      <!-- ─── SECTION: BUTTONS ─── -->
+      <Label id="sec-buttons" text="Buttons" textStyle="headlineSmall"
+             foreground="#E0E0E0" margin="0,16,0,8" />
+      <Divider id="div2" />
+
+      <FlexPanel id="btn-row1" direction="Row" gap="12" alignItems="Center"
+                 background="Transparent" padding="0,8">
+        <NimbusButton id="btn-filled"   text="Filled"   buttonStyle="Filled"   buttonColor="#6C63FF" height="40" padding="0,20" />
+        <NimbusButton id="btn-outlined" text="Outlined" buttonStyle="Outlined" buttonColor="#6C63FF" height="40" padding="0,20" />
+        <NimbusButton id="btn-text"     text="Text"     buttonStyle="Text"     buttonColor="#6C63FF" height="40" padding="0,20" />
+        <NimbusButton id="btn-tonal"    text="Tonal"    buttonStyle="Tonal"    buttonColor="#6C63FF" height="40" padding="0,20" />
+        <NimbusButton id="btn-ghost"    text="Ghost"    buttonStyle="Ghost"    buttonColor="#6C63FF" height="40" padding="0,20" />
+      </FlexPanel>
+
+      <FlexPanel id="btn-row2" direction="Row" gap="12" alignItems="Center"
+                 background="Transparent" padding="0,8">
+        <NimbusButton id="btn-sm"   text="Small"   buttonSize="Small"  buttonStyle="Filled" buttonColor="#6C63FF" />
+        <NimbusButton id="btn-md"   text="Medium"  buttonSize="Medium" buttonStyle="Filled" buttonColor="#6C63FF" />
+        <NimbusButton id="btn-lg"   text="Large"   buttonSize="Large"  buttonStyle="Filled" buttonColor="#6C63FF" />
+        <NimbusButton id="btn-load" text="Loading" isLoading="true"    loadingText="Please wait..." buttonStyle="Filled" buttonColor="#6C63FF" />
+      </FlexPanel>
+
+      <FlexPanel id="btn-row3" direction="Row" gap="12" alignItems="Center"
+                 background="Transparent" padding="0,8">
+        <IconButton  id="ib1" icon="★" iconSize="20" buttonColor="#6C63FF" isCircular="true" width="40" height="40" />
+        <IconButton  id="ib2" icon="♥" iconSize="20" buttonColor="#E91E63" isCircular="true" width="40" height="40" />
+        <IconButton  id="ib3" icon="✎" iconSize="20" buttonColor="#4CAF50" isCircular="true" width="40" height="40" />
+        <ToggleButton id="tog1" text="OFF" activeText="ON" isToggled="false"
+                      activeColor="#6C63FF" inactiveColor="#3E3E42"
+                      height="36" padding="0,16" />
+        <LinkButton  id="lnk1" text="Learn more →" showUnderline="true"
+                     url="https://example.com" foreground="#6C63FF" height="36" />
+      </FlexPanel>
+
+      <!-- ─── SECTION: INPUTS ─── -->
+      <Label id="sec-inputs" text="Inputs" textStyle="headlineSmall"
+             foreground="#E0E0E0" margin="0,16,0,8" />
+      <Divider id="div3" />
+
+      <FlexPanel id="inputs-col" direction="Column" gap="20" background="Transparent">
+
+        <!-- Text Input -->
+        <NimbusTextInput id="inp-name" label="Full Name"
+                         placeholder="Enter your name..." value=""
+                         helperText="First and last name"
+                         background="#2D2D30" foreground="#FFFFFF"
+                         height="48" cornerRadius="8" />
+
+        <!-- Search -->
+        <SearchInput id="inp-search" placeholder="Search components..."
+                     showSearchIcon="true" showClearButton="true"
+                     background="#2D2D30" height="44" cornerRadius="22" />
+
+        <!-- Password -->
+        <PasswordInput id="inp-pass" label="Password"
+                       placeholder="Min 8 characters"
+                       showToggleButton="true" showStrengthIndicator="true"
+                       background="#2D2D30" height="48" cornerRadius="8" />
+
+        <!-- Number -->
+        <NumberInput id="inp-num" label="Quantity"
+                     value="1" minimum="0" maximum="100" step="1"
+                     showStepper="true" unit="pcs"
+                     background="#2D2D30" height="48" cornerRadius="8" />
+
+        <!-- TextArea -->
+        <NimbusTextArea id="inp-bio" label="Bio"
+                        placeholder="Tell us about yourself..."
+                        rows="4" maxLength="500" showCharCount="true"
+                        background="#2D2D30" cornerRadius="8" height="120" />
+
+        <!-- ComboBox -->
+        <ComboBox id="inp-combo" label="Theme"
+                  placeholder="Select a theme..."
+                  selectedIndex="-1"
+                  background="#2D2D30" height="48" cornerRadius="8" />
+
+      </FlexPanel>
+
+      <!-- ─── SECTION: SELECTION CONTROLS ─── -->
+      <Label id="sec-sel" text="Selection Controls" textStyle="headlineSmall"
+             foreground="#E0E0E0" margin="0,16,0,8" />
+      <Divider id="div4" />
+
+      <FlexPanel id="selection-row" direction="Row" gap="32" alignItems="Center"
+                 background="Transparent" padding="0,8">
+
+        <!-- Switches -->
+        <FlexPanel id="switches-col" direction="Column" gap="16" background="Transparent">
+          <Switch id="sw1" label="Dark Mode"        isOn="true"  activeColor="#6C63FF" height="32" />
+          <Switch id="sw2" label="Notifications"    isOn="false" activeColor="#4CAF50" height="32" />
+          <Switch id="sw3" label="Auto-save"        isOn="true"  activeColor="#2196F3" height="32" />
+        </FlexPanel>
+
+        <!-- Checkboxes -->
+        <FlexPanel id="checks-col" direction="Column" gap="16" background="Transparent">
+          <NimbusCheckBox id="chk1" label="Accept Terms"     isChecked="true"  checkColor="#6C63FF" />
+          <NimbusCheckBox id="chk2" label="Subscribe"        isChecked="false" checkColor="#6C63FF" />
+          <NimbusCheckBox id="chk3" label="Remember me"      isChecked="true"  checkColor="#4CAF50" />
+        </FlexPanel>
+
+        <!-- Radio Buttons -->
+        <FlexPanel id="radios-col" direction="Column" gap="16" background="Transparent">
+          <RadioButton id="rb1" label="Light Theme"  groupName="theme" value="light" isSelected="true"  activeColor="#6C63FF" />
+          <RadioButton id="rb2" label="Dark Theme"   groupName="theme" value="dark"  isSelected="false" activeColor="#6C63FF" />
+          <RadioButton id="rb3" label="System Theme" groupName="theme" value="auto"  isSelected="false" activeColor="#6C63FF" />
+        </FlexPanel>
+
+      </FlexPanel>
+
+      <!-- ─── SECTION: WIDGETS ─── -->
+      <Label id="sec-widgets" text="Widgets" textStyle="headlineSmall"
+             foreground="#E0E0E0" margin="0,16,0,8" />
+      <Divider id="div5" />
+
+      <!-- Avatars -->
+      <FlexPanel id="avatar-row" direction="Row" gap="16" alignItems="Center"
+                 background="Transparent" padding="0,8">
+        <Avatar id="av1" initials="JD" avatarColor="#6C63FF" size="48" shape="Circle" statusDot="Online" />
+        <Avatar id="av2" initials="AK" avatarColor="#E91E63" size="48" shape="Circle" />
+        <Avatar id="av3" initials="NB" avatarColor="#4CAF50" size="48" shape="Rounded" />
+        <Avatar id="av4" initials="R"  avatarColor="#FF9800" size="40" shape="Square" />
+      </FlexPanel>
+
+      <!-- Chips -->
+      <FlexPanel id="chip-row" direction="Row" gap="8" alignItems="Center"
+                 background="Transparent" padding="0,8" wrap="true">
+        <Chip id="c1" text="Design"      chipColor="#6C63FF"  chipStyle="Filled"   />
+        <Chip id="c2" text="Development" chipColor="#4CAF50"  chipStyle="Filled"   />
+        <Chip id="c3" text="Removable"   chipColor="#E91E63"  chipStyle="Filled"   isDeletable="true" />
+        <Chip id="c4" text="Outlined"    chipColor="#9E9E9E"  chipStyle="Outlined" />
+        <Chip id="c5" text="Preview"     chipColor="#2196F3"  chipStyle="Filled"   />
+      </FlexPanel>
+
+      <!-- Divider with text -->
+      <Divider id="div-text" dividerText="OR" dividerColor="#3E3E42" />
+
+      <!-- Card with list tiles -->
+      <Card id="card1" background="#1E1E1E" cornerRadius="12" padding="0"
+            shadow="true" margin="0,8">
+        <FlexPanel id="card-col" direction="Column" gap="0" background="Transparent">
+          <ListTile id="lt1" title="Profile Settings"  subtitle="Update your info"      leadingIcon="👤" trailingIcon="›" showDivider="true" />
+          <ListTile id="lt2" title="Notifications"     subtitle="Manage alerts"         leadingIcon="🔔" trailingIcon="›" showDivider="true" />
+          <ListTile id="lt3" title="Privacy &amp; Security" subtitle="Control your data" leadingIcon="🔒" trailingIcon="›" showDivider="false" />
+        </FlexPanel>
+      </Card>
+
+      <!-- Expander / Accordion -->
+      <Expander id="exp1" headerText="Advanced Options" isExpanded="false"
+                background="#1E1E1E" cornerRadius="8" margin="0,8">
+        <FlexPanel id="exp-content" direction="Column" gap="12" padding="16,16,16,8" background="Transparent">
+          <Switch id="sw-adv1" label="Developer Mode"  isOn="false" activeColor="#FF9800" height="32" />
+          <Switch id="sw-adv2" label="Verbose Logging" isOn="false" activeColor="#FF9800" height="32" />
+        </FlexPanel>
+      </Expander>
+
+      <!-- Stepper -->
+      <Label id="lbl-stepper" text="Onboarding Steps" textStyle="titleMedium"
+             foreground="#E0E0E0" margin="0,16,0,8" />
+      <Stepper id="step1" currentStep="1" orientation="Horizontal"
+               activeColor="#6C63FF" completedColor="#4CAF50" inactiveColor="#555555"
+               showLabels="true" height="60" />
+
+      <!-- Progress bar section -->
+      <Label id="lbl-progress" text="Progress" textStyle="titleMedium"
+             foreground="#E0E0E0" margin="0,16,0,8" />
+      <FlexPanel id="prog-col" direction="Column" gap="12" background="Transparent">
+        <ProgressBar id="pb1" progress="75" progressColor="#6C63FF" height="8"  cornerRadius="4" />
+        <ProgressBar id="pb2" progress="40" progressColor="#4CAF50" height="8"  cornerRadius="4" />
+        <ProgressBar id="pb3" progress="90" progressColor="#E91E63" height="8"  cornerRadius="4" />
+      </FlexPanel>
+
+      <!-- Bottom spacing -->
+      <SizedBox id="bottom-space" height="48" />
+
+    </FlexPanel>
+  </ScrollView>
+
+  <!-- ═══════════════ FAB ═══════════════ -->
+  <FAB id="fab1" icon="+" fabColor="#6C63FF" isExtended="false"
+       width="56" height="56" position="Absolute" bottom="16" right="16"
+       cornerRadius="16" shadow="true" />
+
+</FlexPanel>
