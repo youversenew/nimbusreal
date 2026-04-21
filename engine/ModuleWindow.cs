@@ -34,8 +34,8 @@ namespace Nimbus.WPF
             // Configure window
             ConfigureWindow(rootNode);
 
-            // Create drawing canvas for 2D rendering
-            _canvas = new DrawingCanvas();
+            // Create drawing canvas for 2D rendering (FIX: pass engine reference)
+            _canvas = new DrawingCanvas(_engine);
             this.Content = _canvas;
 
             // Add F12 key handler
@@ -197,116 +197,253 @@ namespace Nimbus.WPF
     /// </summary>
     public class DrawingCanvas : Canvas
     {
-        private DrawingVisual _visual;
+        private WpfEngine _engine;
         private IUIModule _rootModule;
         private List<string> _debugLogs = new List<string>();
         private bool _debugVisible = false;
         private const int DebugPanelHeight = 200;
         private Dictionary<Rect, IUIModule> _clickableRegions = new Dictionary<Rect, IUIModule>();
+        private Point _lastMousePos;
+        private IUIModule _hoveredModule = null;
+        // Input overlay (transparent WPF TextBox shown on click)
+        private IUIModule _activeInputModule = null;
+        private Rect    _activeInputRect   = Rect.Empty;
+        private System.Windows.Controls.TextBox _inputOverlay;
 
-        public DrawingCanvas()
+        public DrawingCanvas(WpfEngine engine)
         {
-            _visual = new DrawingVisual();
-            AddVisualChild(_visual);
-            
-            // Register mouse click handler
+            _engine   = engine;
+            this.Focusable = true;
+
+            // ── Transparent TextBox overlay for real keyboard input ──
+            _inputOverlay = new System.Windows.Controls.TextBox
+            {
+                Visibility       = Visibility.Hidden,
+                Background       = System.Windows.Media.Brushes.Transparent,
+                BorderThickness  = new Thickness(0),
+                Foreground       = System.Windows.Media.Brushes.White,
+                CaretBrush       = System.Windows.Media.Brushes.White,
+                FontFamily       = new FontFamily("Segoe UI"),
+                FontSize         = 13,
+                Padding          = new Thickness(0),
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            this.Children.Add(_inputOverlay);
+
+            _inputOverlay.TextChanged += (s, e) =>
+            {
+                if (_activeInputModule == null) return;
+                string v = _inputOverlay.Text;
+                if (_activeInputModule is NimbusTextInput) ((NimbusTextInput)_activeInputModule).Value = v;
+                else if (_activeInputModule is CustomUIInput) ((CustomUIInput)_activeInputModule).Value = v;
+                else if (_activeInputModule is NimbusSearchInput) ((NimbusSearchInput)_activeInputModule).Value  = v;
+                else if (_activeInputModule is NimbusTextArea) ((NimbusTextArea)_activeInputModule).Value  = v;
+                else if (_activeInputModule is NimbusPasswordInput) ((NimbusPasswordInput)_activeInputModule).Value = v;
+                InvalidateVisual();
+            };
+            _inputOverlay.LostFocus += (s, e) => HideInputOverlay();
+            _inputOverlay.KeyDown   += (s, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Escape ||
+                    e.Key == System.Windows.Input.Key.Return)
+                { this.Focus(); e.Handled = true; }
+            };
+
+            // ── Mouse click ──
             this.MouseDown += (s, e) =>
             {
-                Point clickPos = e.GetPosition(this);
-                HandleClick(clickPos);
+                Point pt = e.GetPosition(this);
+                // Hide input overlay if clicking outside it
+                if (_activeInputModule != null && !_activeInputRect.Contains(pt))
+                    HideInputOverlay();
+                HandleClick(pt);
             };
+
+            // ── Mouse move: hover + Hand cursor ──
+            this.MouseMove += (s, e) =>
+            {
+                _lastMousePos = e.GetPosition(this);
+                IUIModule hov = GetModuleAt(_lastMousePos);
+                if (hov != _hoveredModule)
+                {
+                    _hoveredModule = hov;
+                    this.Cursor = hov != null
+                        ? System.Windows.Input.Cursors.Hand
+                        : System.Windows.Input.Cursors.Arrow;
+                    InvalidateVisual();
+                }
+            };
+            this.MouseLeave += (s, e) =>
+            {
+                _hoveredModule = null;
+                this.Cursor = System.Windows.Input.Cursors.Arrow;
+                InvalidateVisual();
+            };
+
+            this.SizeChanged += (s, e) => InvalidateVisual();
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────
+        private bool IsHovered(IUIModule m)     { return m != null && m == _hoveredModule; }
+        private bool IsInputActive(IUIModule m) { return m != null && m == _activeInputModule; }
+
+        private Color Lighten(Color c, double f = 0.20)
+        {
+            return Color.FromArgb(c.A,
+                (byte)Math.Min(255, c.R + (int)((255 - c.R) * f)),
+                (byte)Math.Min(255, c.G + (int)((255 - c.G) * f)),
+                (byte)Math.Min(255, c.B + (int)((255 - c.B) * f)));
+        }
+
+        private void ShowInputOverlay(IUIModule module, Rect bounds)
+        {
+            _activeInputModule = module;
+            _activeInputRect   = bounds;
+            string val = "";
+            if      (module is NimbusTextInput) val = ((NimbusTextInput)module).Value ?? "";
+            else if (module is CustomUIInput) val = ((CustomUIInput)module).Value ?? "";
+            else if (module is NimbusSearchInput) val = ((NimbusSearchInput)module).Value  ?? "";
+            else if (module is NimbusTextArea) val = ((NimbusTextArea)module).Value  ?? "";
+            else if (module is NimbusPasswordInput) val = ((NimbusPasswordInput)module).Value ?? "";
+
+            double lpad = (module is NimbusSearchInput) ? 34 : 12;
+            double top  = bounds.Top + (bounds.Height - 22) / 2.0;
+            Canvas.SetLeft(_inputOverlay, bounds.Left + lpad);
+            Canvas.SetTop (_inputOverlay, top);
+            _inputOverlay.Width      = bounds.Width - lpad - 8;
+            _inputOverlay.Height     = 22;
+            _inputOverlay.Text       = val;
+            _inputOverlay.Visibility = Visibility.Visible;
+            _inputOverlay.Focus();
+            _inputOverlay.CaretIndex = _inputOverlay.Text.Length;
+            InvalidateVisual();
+        }
+
+        private void HideInputOverlay()
+        {
+            _activeInputModule       = null;
+            _activeInputRect         = Rect.Empty;
+            _inputOverlay.Visibility = Visibility.Hidden;
+            InvalidateVisual();
+        }
+
+        /// <summary>
+        /// Returns the topmost clickable IUIModule at the given point, or null.
+        /// </summary>
+        private IUIModule GetModuleAt(Point pt)
+        {
+            IUIModule found = null;
+            foreach (var kvp in _clickableRegions)
+            {
+                if (kvp.Key.Contains(pt))
+                    found = kvp.Value;   // keep last (topmost)
+            }
+            return found;
         }
 
         private void HandleClick(Point clickPos)
         {
-            // Find which element was clicked
+            // Find which element was clicked (last match = topmost)
+            IUIModule clickedModule = null;
+            Rect clickedRect = Rect.Empty;
             foreach (var kvp in _clickableRegions)
             {
                 if (kvp.Key.Contains(clickPos))
                 {
-                    IUIModule module = kvp.Value;
-                    
-                    // FIX #1: Check for __onclick__ handler property (from ModuleRenderer)
-                    object onclickHandler = module.GetProperty("__onclick__");
-                    if (onclickHandler != null && !string.IsNullOrEmpty(onclickHandler.ToString()))
-                    {
-                        string handlerName = onclickHandler.ToString();
-                        AddDebugLog("[CLICK] Element clicked with onclick handler: " + handlerName);
-                        
-                        try
-                        {
-                            // Execute via WpfEngine.ExecuteHandler (critical fix for InModule mode)
-                            _engine.ExecuteHandler(handlerName, module);
-                            AddDebugLog("[ACTION] Handler executed: " + handlerName);
-                        }
-                        catch (Exception ex)
-                        {
-                            AddDebugLog("[ERROR] Handler execution failed: " + ex.Message);
-                        }
-                        
-                        InvalidateVisual();
-                        return;
-                    }
-                    
-                    // FIX #2: Fallback to OnClick delegate (for legacy support)
-                    if (module is CustomUIButton)
-                    {
-                        CustomUIButton button = (CustomUIButton)module;
-                        AddDebugLog("[CLICK] Button clicked: " + (button.Id ?? "unnamed"));
-                        
-                        // Execute onclick if exists
-                        if (button.OnClick != null)
-                        {
-                            AddDebugLog("[ACTION] Executing button action");
-                            try { button.OnClick(); }
-                            catch { }
-                        }
-                    }
-                    else if (module is CustomUIToggle)
-                    {
-                        CustomUIToggle toggle = (CustomUIToggle)module;
-                        toggle.IsChecked = !toggle.IsChecked;
-                        AddDebugLog("[CLICK] Toggle clicked: " + (toggle.Id ?? "unnamed") + " = " + toggle.IsChecked);
-                        
-                        if (toggle.OnChange != null)
-                        {
-                            AddDebugLog("[ACTION] Executing toggle change action");
-                            try { toggle.OnChange(); }
-                            catch { }
-                        }
-                    }
-                    else if (module is NimbusButton)
-                    {
-                        NimbusButton button = (NimbusButton)module;
-                        AddDebugLog("[CLICK] NimbusButton clicked: " + (button.Id ?? "unnamed"));
-                        
-                        if (button.OnClick != null)
-                        {
-                            AddDebugLog("[ACTION] Executing NimbusButton action");
-                            try { button.OnClick(); }
-                            catch { }
-                        }
-                    }
-                    
-                    InvalidateVisual();
-                    break;
+                    clickedModule = kvp.Value;
+                    clickedRect = kvp.Key;
                 }
             }
+            if (clickedModule == null) return;
+            IUIModule module = clickedModule;
+
+            // ── Text inputs: show keyboard overlay ──
+            if (module is NimbusTextInput || module is CustomUIInput ||
+                module is NimbusSearchInput || module is NimbusTextArea ||
+                module is NimbusPasswordInput)
+            {
+                ShowInputOverlay(module, clickedRect);
+                AddDebugLog("[CLICK] Input focused: " + (module.Id ?? module.ElementType));
+                return;
+            }
+
+            // ── ComboBox: cycle items ──
+            if (module is NimbusComboBox)
+            {
+                NimbusComboBox cmb = (NimbusComboBox)module;
+                if (cmb.Items != null && cmb.Items.Count > 0)
+                    cmb.SelectedIndex = (cmb.SelectedIndex + 1) % cmb.Items.Count;
+                AddDebugLog("[CLICK] ComboBox sel=" + cmb.SelectedIndex);
+                InvalidateVisual();
+                return;
+            }
+
+            // ── onclick XML handler (highest priority for buttons) ──
+            object onclickHandler = module.GetProperty("__onclick__");
+            if (onclickHandler != null && !string.IsNullOrEmpty(onclickHandler.ToString()))
+            {
+                string handlerName = onclickHandler.ToString();
+                AddDebugLog("[CLICK] '" + (module.Id ?? module.ElementType) + "' -> " + handlerName);
+                try   { if (_engine != null) _engine.ExecuteHandler(handlerName, module); }
+                catch (Exception ex) { AddDebugLog("[ERROR] " + ex.Message); }
+                InvalidateVisual();
+                return;
+            }
+
+            // ── Toggle / Switch / CheckBox state flip ──
+            if (module is NimbusSwitch)        { var m2 = (NimbusSwitch)module;       m2.IsOn      = !m2.IsOn;      AddDebugLog("[SW] IsOn="    +m2.IsOn);      InvalidateVisual(); return; }
+            if (module is NimbusCheckBox)      { var m2 = (NimbusCheckBox)module;     m2.IsChecked = !m2.IsChecked; AddDebugLog("[CB] ="       +m2.IsChecked); InvalidateVisual(); return; }
+            if (module is NimbusToggleButton)  { var m2 = (NimbusToggleButton)module; m2.IsToggled = !m2.IsToggled; AddDebugLog("[TB] ="       +m2.IsToggled); InvalidateVisual(); return; }
+            if (module is NimbusRadioButton)
+            {
+                var rb = (NimbusRadioButton)module;
+                foreach (var kv in _clickableRegions)
+                {
+                    if (kv.Value is NimbusRadioButton)
+                    {
+                        var otherRb = (NimbusRadioButton)kv.Value;
+                        if (otherRb != rb && (otherRb.GroupName == rb.GroupName || string.IsNullOrEmpty(rb.GroupName)))
+                            otherRb.IsSelected = false;
+                    }
+                }
+                rb.IsSelected = true;
+                AddDebugLog("[RB] sel");
+                InvalidateVisual();
+                return;
+            }
+            if (module is NimbusLinkButton)
+            {
+                var lb = (NimbusLinkButton)module;
+                lb.IsVisited = true;
+                AddDebugLog("[LINK] " + lb.Url);
+                try { if (!string.IsNullOrEmpty(lb.Url)) System.Diagnostics.Process.Start(lb.Url); }
+                catch (Exception ex) { AddDebugLog("[ERROR] " + ex.Message); }
+                InvalidateVisual();
+                return;
+            }
+            if (module is NimbusIconButton)    { var m2 = (NimbusIconButton)module;   m2.IsToggled = !m2.IsToggled; AddDebugLog("[IB] tog");                   InvalidateVisual(); return; }
+            if (module is CustomUIToggle)
+            {
+                var t = (CustomUIToggle)module;
+                t.IsChecked = !t.IsChecked;
+                if (t.OnChange != null) try { t.OnChange(); } catch { }
+                AddDebugLog("[TOG] =" + t.IsChecked);
+                InvalidateVisual();
+                return;
+            }
+
+            // ── OnClick delegate (legacy) ──
+            if      (module is NimbusButton) { var nb = (NimbusButton)module; AddDebugLog("[BTN] " + nb.Id); if (nb.OnClick != null) try { nb.OnClick(); } catch { } }
+            else if (module is CustomUIButton) { var cb2 = (CustomUIButton)module; AddDebugLog("[BTN] " + cb2.Id); if (cb2.OnClick != null) try { cb2.OnClick(); } catch { } }
+            else { AddDebugLog("[CLICK] " + (module.Id ?? module.ElementType)); }
+
+            InvalidateVisual();
         }
 
         public void RenderModule(IUIModule module, Rect bounds)
         {
             _rootModule = module;
-            _clickableRegions.Clear();
-            DrawingContext dc = _visual.RenderOpen();
-            
-            // Draw background
-            dc.DrawRectangle(new SolidColorBrush(Colors.White), null, bounds);
-            
-            // Render the UI module tree
-            RenderModuleRecursive(dc, module, bounds);
-            
-            dc.Close();
+            InvalidateVisual();
         }
 
         public void SetDebugVisible(bool visible)
@@ -328,7 +465,12 @@ namespace Nimbus.WPF
             
             if (_rootModule != null)
             {
-                Rect bounds = new Rect(0, 0, this.ActualWidth, this.ActualHeight);
+                Rect bounds = new Rect(0, 0,
+                    Math.Max(this.ActualWidth, 1),
+                    Math.Max(this.ActualHeight, 1));
+                // Dark background for InModule
+                drawingContext.DrawRectangle(
+                    new SolidColorBrush(Color.FromArgb(255, 30, 30, 30)), null, bounds);
                 RenderModuleRecursive(drawingContext, _rootModule, bounds);
             }
 
@@ -510,10 +652,9 @@ namespace Nimbus.WPF
             
             // Draw button background
             Color bgColor = ParseColor(button.Background, Color.FromArgb(255, 0, 122, 204));
+            // HOVER: lighten background
+            if (IsHovered(button)) bgColor = Lighten(bgColor, 0.22);
             dc.DrawRoundedRectangle(new SolidColorBrush(bgColor), null, bounds, 4, 4);
-
-            // Draw button border
-            dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(Colors.DarkGray), 1), bounds, 4, 4);
 
             // Draw text
             Color textColor = ParseColor(button.Foreground, Colors.White);
@@ -521,8 +662,8 @@ namespace Nimbus.WPF
                 button.Text ?? "Button",
                 System.Globalization.CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight,
-                new Typeface("Arial"),
-                14,
+                new Typeface("Segoe UI"),
+                13,
                 new SolidColorBrush(textColor)
             );
 
@@ -548,57 +689,72 @@ namespace Nimbus.WPF
 
         private void RenderInput(DrawingContext dc, CustomUIInput input, Rect bounds)
         {
-            // Draw text box background
-            Color bgColor = ParseColor(input.Background, Colors.White);
-            dc.DrawRectangle(new SolidColorBrush(bgColor), null, bounds);
+            // Register as clickable so overlay is shown
+            _clickableRegions[bounds] = input;
+            bool active = IsInputActive(input);
+            bool hov    = IsHovered(input);
 
-            // Draw border
-            Color borderColor = ParseColor(input.BorderBrush, Colors.Gray);
-            dc.DrawRectangle(null, new Pen(new SolidColorBrush(borderColor), 2), bounds);
+            Color bgColor = ParseColor(input.Background, Color.FromArgb(255, 36, 36, 52));
+            if (hov) bgColor = Lighten(bgColor, 0.12);
+            dc.DrawRoundedRectangle(new SolidColorBrush(bgColor), null, bounds, 6, 6);
 
-            // Draw text content
-            Color textColor = ParseColor(input.Foreground, Colors.Black);
-            FormattedText text = new FormattedText(
-                input.Value ?? "",
-                System.Globalization.CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                new Typeface("Arial"),
-                12,
-                new SolidColorBrush(textColor)
-            );
+            // Border: accent when active, subtle when hovered, dim otherwise
+            Color border = active ? Color.FromArgb(255, 124, 111, 255)
+                         : hov   ? Color.FromArgb(255, 90, 90, 130)
+                                 : Color.FromArgb(255, 55, 55, 80);
+            dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(border), active ? 2 : 1), bounds, 6, 6);
 
-            dc.DrawText(text, new Point(bounds.Left + 8, bounds.Top + 8));
+            // Placeholder or value
+            string display = input.Value ?? "";
+            string placeholder = input.Placeholder ?? "";
+            bool showPlaceholder = string.IsNullOrEmpty(display) && !active;
+            Color textColor = showPlaceholder
+                ? Color.FromArgb(160, 150, 150, 180)
+                : Color.FromArgb(255, 238, 238, 255);
+            string textToShow = showPlaceholder ? placeholder : (active ? "" : display);
+
+            if (!string.IsNullOrEmpty(textToShow))
+            {
+                FormattedText ft = new FormattedText(textToShow,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12,
+                    new SolidColorBrush(textColor));
+                dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + (bounds.Height - ft.Height) / 2));
+            }
         }
 
         private void RenderToggle(DrawingContext dc, CustomUIToggle toggle, Rect bounds)
         {
-            // Register as clickable
             _clickableRegions[bounds] = toggle;
-            
-            // Draw checkbox
-            Rect checkboxBounds = new Rect(bounds.Left, bounds.Top, 20, 20);
-            dc.DrawRectangle(new SolidColorBrush(Colors.White), new Pen(new SolidColorBrush(Colors.Gray), 1), checkboxBounds);
+            bool hov = IsHovered(toggle);
+
+            // Draw checkbox box
+            Rect box = new Rect(bounds.Left, bounds.Top + (bounds.Height - 18) / 2, 18, 18);
+            Color boxBg = toggle.IsChecked
+                ? Color.FromArgb(255, 124, 111, 255)
+                : Color.FromArgb(255, 36, 36, 52);
+            if (hov) boxBg = Lighten(boxBg, 0.15);
+            dc.DrawRoundedRectangle(new SolidColorBrush(boxBg),
+                new Pen(new SolidColorBrush(Color.FromArgb(255, 100, 100, 180)), 1.5), box, 4, 4);
 
             if (toggle.IsChecked)
             {
-                // Draw checkmark
-                dc.DrawLine(new Pen(new SolidColorBrush(Colors.Green), 2), new Point(checkboxBounds.Left + 4, checkboxBounds.Top + 10),
-                    new Point(checkboxBounds.Left + 8, checkboxBounds.Top + 14));
-                dc.DrawLine(new Pen(new SolidColorBrush(Colors.Green), 2), new Point(checkboxBounds.Left + 8, checkboxBounds.Top + 14),
-                    new Point(checkboxBounds.Left + 16, checkboxBounds.Top + 4));
+                // Checkmark
+                Pen ck = new Pen(new SolidColorBrush(Colors.White), 2) { LineJoin = PenLineJoin.Round };
+                dc.DrawLine(ck, new Point(box.Left + 3, box.Top + 9), new Point(box.Left + 7, box.Top + 13));
+                dc.DrawLine(ck, new Point(box.Left + 7, box.Top + 13), new Point(box.Left + 15, box.Top + 4));
             }
 
-            // Draw label
-            FormattedText label = new FormattedText(
-                toggle.Label ?? "",
-                System.Globalization.CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                new Typeface("Arial"),
-                12,
-                new SolidColorBrush(Colors.Black)
-            );
-
-            dc.DrawText(label, new Point(bounds.Left + 30, bounds.Top + 2));
+            // Label
+            string lbl = toggle.Label ?? "";
+            if (!string.IsNullOrEmpty(lbl))
+            {
+                FormattedText ft = new FormattedText(lbl,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12,
+                    new SolidColorBrush(Color.FromArgb(255, 200, 200, 220)));
+                dc.DrawText(ft, new Point(box.Right + 8, bounds.Top + (bounds.Height - ft.Height) / 2));
+            }
         }
 
         private void RenderSlider(DrawingContext dc, CustomUISlider slider, Rect bounds)
@@ -741,6 +897,7 @@ namespace Nimbus.WPF
 
             string bgHex = btn.GetEffectiveBackground();
             Color bg = ParseColor(bgHex, Color.FromArgb(255, 108, 99, 255));
+            if (IsHovered(btn)) bg = Lighten(bg, 0.22);
             double cr = btn.CornerRadius;
             dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, bounds, cr, cr);
 
@@ -748,7 +905,10 @@ namespace Nimbus.WPF
             string borderHex = btn.GetEffectiveBorder();
             Color border = ParseColor(borderHex, Colors.Transparent);
             if (border.A > 0)
+            {
+                if (IsHovered(btn)) border = Lighten(border, 0.3);
                 dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(border), 1.5), bounds, cr, cr);
+            }
 
             // Label
             string label = btn.IsLoading ? btn.LoadingText : btn.Text;
@@ -771,9 +931,11 @@ namespace Nimbus.WPF
             _clickableRegions[bounds] = btn;
             double cr = btn.IsCircular ? bounds.Width / 2 : btn.CornerRadius;
             Color bg = ParseColor(btn.IsToggled ? btn.ToggledColor : btn.ButtonColor, Colors.Transparent);
+            if (IsHovered(btn) && bg.A > 0) bg = Lighten(bg, 0.22);
             if (bg.A > 0)
                 dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, bounds, cr, cr);
             Color iconColor = ParseColor(btn.IsToggled ? btn.ToggledIconColor : btn.IconColor, Colors.White);
+            if (IsHovered(btn) && bg.A == 0) iconColor = Lighten(iconColor, 0.4);
             FormattedText icon = new FormattedText(
                 btn.Icon ?? "●",
                 System.Globalization.CultureInfo.InvariantCulture,
@@ -791,6 +953,7 @@ namespace Nimbus.WPF
             if (btn == null) return;
             _clickableRegions[bounds] = btn;
             Color bg = ParseColor(btn.IsToggled ? btn.ActiveColor : btn.InactiveColor, Color.FromArgb(255, 62, 62, 66));
+            if (IsHovered(btn)) bg = Lighten(bg, 0.22);
             dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, bounds, btn.CornerRadius, btn.CornerRadius);
             Color fg = ParseColor(btn.IsToggled ? btn.ActiveTextColor : btn.InactiveTextColor, Colors.White);
             string label = btn.IsToggled ? (btn.ActiveText ?? btn.Text) : btn.Text;
@@ -810,6 +973,7 @@ namespace Nimbus.WPF
             if (btn == null) return;
             _clickableRegions[bounds] = btn;
             Color fg = ParseColor(btn.IsVisited ? btn.VisitedColor : btn.LinkColor, Color.FromArgb(255, 108, 99, 255));
+            if (IsHovered(btn)) fg = Lighten(fg, 0.4);
             FormattedText ft = new FormattedText(
                 btn.Text ?? "Link",
                 System.Globalization.CultureInfo.InvariantCulture,
@@ -817,7 +981,7 @@ namespace Nimbus.WPF
                 new Typeface("Segoe UI"), btn.FontSize > 0 ? btn.FontSize : 14,
                 new SolidColorBrush(fg));
             dc.DrawText(ft, new Point(bounds.Left, bounds.Top + (bounds.Height - ft.Height) / 2));
-            if (btn.ShowUnderline)
+            if (btn.ShowUnderline || IsHovered(btn))
                 dc.DrawLine(new Pen(new SolidColorBrush(fg), 1),
                     new Point(bounds.Left, bounds.Top + (bounds.Height + ft.Height) / 2),
                     new Point(bounds.Left + ft.Width, bounds.Top + (bounds.Height + ft.Height) / 2));
@@ -1223,17 +1387,6 @@ namespace Nimbus.WPF
         {
             double result;
             return double.TryParse(value, out result) ? result : defaultValue;
-        }
-
-        protected override int VisualChildrenCount
-        {
-            get { return 1; }
-        }
-
-        protected override Visual GetVisualChild(int index)
-        {
-            if (index == 0) return _visual;
-            throw new ArgumentOutOfRangeException("index");
         }
     }
 }

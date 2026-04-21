@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<App Name="Nimbus InModule Button Test"
+     Width="900" Height="600"
+     Background="#0F0F13"
+     inModule="true">
+
+    <Logic>
+        <Var Name="clickCount" Value="0" Type="int"/>
+
+        <Handler Name="OnPrimaryClick">
+            <Increment State="clickCount"/>
+            <Set Control="lblStatus" Property="Text" Value="Tugma {clickCount} marta bosildi"/>
+            <Alert Message="Primary tugma bosildi!"/>
+        </Handler>
+
+        <Handler Name="OnSuccessClick">
+            <Alert Message="Success bosildi!"/>
+        </Handler>
+    </Logic>
+
+    <UI>
+        <FlexPanel Direction="Column" Gap="24" Background="#0F0F13" Padding="32" Width="900" Height="600">
+            
+            <Label Text="Nimbus InModule Button Test" FontSize="24" FontWeight="Bold" Foreground="#7C6FFF"/>
+            
+            <Card Width="400" Height="100" Background="#1A1A28" CornerRadius="12" Padding="16">
+                <Label id="lblStatus" Text="Tayyor — tugma bosing!" FontSize="14" Foreground="#EEEEFF"/>
+                <FlexPanel Direction="Row" Gap="16" Height="40" Margin="0,16,0,0">
+                    <NimbusButton Text="✅ Primary" Width="120" Height="40" CornerRadius="8" Background="#7C6FFF" TextColor="#FFFFFF" onclick="OnPrimaryClick"/>
+                    <NimbusButton Text="🎉 Success" Width="120" Height="40" CornerRadius="8" Background="#00C853" TextColor="#FFFFFF" onclick="OnSuccessClick"/>
+                </FlexPanel>
+            </Card>
+
+            <Card Width="400" Height="100" Background="#1A1A28" CornerRadius="12" Padding="16">
+                <Label Text="Radio Buttons (Yagona tanlov)" FontSize="12" FontWeight="Bold" Foreground="#7C6FFF"/>
+                <FlexPanel Direction="Row" Gap="16" Height="40" Margin="0,16,0,0">
+                    <RadioButton Label="Variant A" IsSelected="true" ActiveColor="#7C6FFF" Height="28"/>
+                    <RadioButton Label="Variant B" IsSelected="false" ActiveColor="#7C6FFF" Height="28"/>
+                    <RadioButton Label="Variant C" IsSelected="false" ActiveColor="#7C6FFF" Height="28"/>
+                </FlexPanel>
+            </Card>
+
+            <Card Width="400" Height="80" Background="#1A1A28" CornerRadius="12" Padding="16">
+                <Label Text="Link Buttons (Veb saytga o'tish)" FontSize="12" FontWeight="Bold" Foreground="#7C6FFF"/>
+                <FlexPanel Direction="Row" Gap="24" Height="40" Margin="0,16,0,0">
+                    <LinkButton Text="GitHub →" Url="https://github.com" LinkColor="#7C6FFF" ShowUnderline="true"/>
+                    <LinkButton Text="Google →" Url="https://google.com" LinkColor="#00C853" ShowUnderline="true"/>
+                </FlexPanel>
+            </Card>
+
+            <Label Text="💡 Sichqonchani tugmalar ustiga olib boring. F12 ni bosib loglarni ko'ring." FontSize="12" Foreground="#9090A0" Margin="0,32,0,0"/>
+
+        </FlexPanel>
+    </UI>
+</App>
