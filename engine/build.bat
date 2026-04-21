@@ -97,6 +97,7 @@ if %ERRORLEVEL% EQU 0 (
     echo ========================================
     echo.
     echo   Builtin plugins: 10
+    echo   UI Systems: WPF + MDui (Material Design)
     if exist "plugins\*.cs" (
         echo   External plugins: compiled into binary
     )

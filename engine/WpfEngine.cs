@@ -2728,21 +2728,7 @@ public CSharpCompiler GetCompiler()
                 XmlNode uiNode = root.SelectSingleNode("UI");
                 if (uiNode != null)
                 {
-                    bool useInModule = _xmlParser.GetBoolAttribute(root, "inModule", false);
-                    Window newWindow = null;
-                    
-                    if (useInModule)
-                    {
-                        IUIModule rootModule = _moduleRenderer.RenderUI(root, uiNode);
-                        if (rootModule != null)
-                        {
-                            newWindow = new ModuleWindow(this, root, uiNode, rootModule);
-                        }
-                    }
-                    else
-                    {
-                        newWindow = _wpfUI.CreateWindow(root, uiNode);
-                    }
+                    Window newWindow = _wpfUI.CreateWindow(root, uiNode);
 
                     if (newWindow != null && newWindow.Content != null)
                     {
