@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<App Name="Button OnClick Test"
+     Width="800"
+     Height="600"
+     Theme="Dark"
+     inModule="true"
+     Description="Complete test of button onclick handlers in InModule mode">
+
+    <Components>
+        <Colors>
+            <Color Name="BgMain" Value="#1E1E1E"/>
+            <Color Name="BgAccent" Value="#2D2D30"/>
+            <Color Name="TextPrimary" Value="#FFFFFF"/>
+            <Color Name="TextSecondary" Value="#AAAAAA"/>
+            <Color Name="AccentBlue" Value="#007ACC"/>
+            <Color Name="AccentGreen" Value="#06C940"/>
+            <Color Name="AccentRed" Value="#F48771"/>
+        </Colors>
+    </Components>
+
+    <Logic>
+        <Var Name="clickCounter" Value="0" Type="int"/>
+        <Var Name="lastButtonClicked" Value="None" Type="string"/>
+        
+        <Handler Name="OnTestButtonClick">
+            <Log Message="Test: Basic Button clicked!"/>
+            <Increment Var="clickCounter"/>
+            <Set Control="counterLabel" Property="Text" Value="Clicks: {clickCounter}"/>
+            <Set Control="lastClickedLabel" Property="Text" Value="Last: Basic Button"/>
+        </Handler>
+        
+        <Handler Name="OnNimbusButtonClick">
+            <Log Message="Test: NimbusButton clicked!"/>
+            <Increment Var="clickCounter"/>
+            <Set Control="counterLabel" Property="Text" Value="Clicks: {clickCounter}"/>
+            <Set Control="lastClickedLabel" Property="Text" Value="Last: NimbusButton"/>
+        </Handler>
+        
+        <Handler Name="OnIconButtonClick">
+            <Log Message="Test: IconButton clicked!"/>
+            <Increment Var="clickCounter"/>
+            <Set Control="counterLabel" Property="Text" Value="Clicks: {clickCounter}"/>
+            <Set Control="lastClickedLabel" Property="Text" Value="Last: IconButton"/>
+        </Handler>
+        
+        <Handler Name="OnUnnamedButtonClick">
+            <Log Message="Test: Unnamed button clicked! This proves auto-naming works!"/>
+            <Increment Var="clickCounter"/>
+            <Set Control="counterLabel" Property="Text" Value="Clicks: {clickCounter}"/>
+            <Set Control="lastClickedLabel" Property="Text" Value="Last: Unnamed Button (Auto-named!)"/>
+        </Handler>
+        
+        <Handler Name="OnClearClick">
+            <Log Message="Test: Clear button clicked!"/>
+            <Set Control="clickCounter" Property="Value" Value="0"/>
+            <Set Control="counterLabel" Property="Text" Value="Clicks: 0"/>
+            <Set Control="lastClickedLabel" Property="Text" Value="Last: None"/>
+        </Handler>
+    </Logic>
+
+    <UI>
+        <Grid Name="mainGrid" Background="#1E1E1E" RowDefinitions="Auto,*,Auto">
+            
+            <!-- Header -->
+            <StackPanel Name="headerPanel" Orientation="Vertical" Grid.Row="0" Padding="16">
+                <Label Name="titleLabel" Text="Button OnClick Handler Test" FontSize="24" FontWeight="SemiBold" Foreground="#007ACC"/>
+                <Label Name="descLabel" Text="Testing onclick handlers in InModule mode with auto-naming" FontSize="12" Foreground="#AAAAAA"/>
+            </StackPanel>
+
+            <!-- Content -->
+            <StackPanel Name="contentPanel" Orientation="Vertical" Background="#2D2D30" Grid.Row="1" Padding="16">
+                
+                <!-- Counter Display -->
+                <Label Name="counterLabel" Text="Clicks: 0" FontSize="20" FontWeight="SemiBold" Foreground="#06C940" Margin="0,0,0,16"/>
+                <Label Name="lastClickedLabel" Text="Last: None" FontSize="14" Foreground="#AAAAAA" Margin="0,0,0,24"/>
+                
+                <!-- Divider -->
+                <StackPanel Background="#3D3D3D" Height="1" Margin="0,0,0,16"/>
+                
+                <!-- Test Group 1: Basic Buttons -->
+                <Label Text="Test Group 1: Basic Buttons" FontSize="14" FontWeight="SemiBold" Foreground="#007ACC" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <Button Name="basicButton" Text="Basic Button" Background="#007ACC" Foreground="#FFFFFF" Padding="12,8" onClick="OnTestButtonClick" Margin="0,0,8,0"/>
+                    <Button Text="With Text Only" Background="#06C940" Foreground="#FFFFFF" Padding="12,8" onClick="OnTestButtonClick" Margin="0,0,8,0"/>
+                </StackPanel>
+                
+                <!-- Test Group 2: NimbusButton (with style variations) -->
+                <Label Text="Test Group 2: NimbusButton (various styles)" FontSize="14" FontWeight="SemiBold" Foreground="#007ACC" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <NimbusButton Name="nimbusBtn1" Text="Filled" ButtonStyle="Filled" ButtonColor="#007ACC" onClick="OnNimbusButtonClick" Margin="0,0,8,0"/>
+                    <NimbusButton Name="nimbusBtn2" Text="Outlined" ButtonStyle="Outlined" ButtonColor="#06C940" onClick="OnNimbusButtonClick" Margin="0,0,8,0"/>
+                    <NimbusButton Name="nimbusBtn3" Text="Text" ButtonStyle="Text" ButtonColor="#F48771" onClick="OnNimbusButtonClick" Margin="0,0,8,0"/>
+                </StackPanel>
+                
+                <!-- Test Group 3: Icon Buttons -->
+                <Label Text="Test Group 3: Icon Buttons" FontSize="14" FontWeight="SemiBold" Foreground="#007ACC" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <IconButton Name="iconBtn1" Icon="⚙" ButtonColor="#007ACC" onClick="OnIconButtonClick" Margin="0,0,8,0"/>
+                    <IconButton Name="iconBtn2" Icon="🔍" ButtonColor="#06C940" onClick="OnIconButtonClick" Margin="0,0,8,0"/>
+                    <IconButton Name="iconBtn3" Icon="➕" ButtonColor="#F48771" onClick="OnIconButtonClick" Margin="0,0,8,0"/>
+                </StackPanel>
+                
+                <!-- Test Group 4: Unnamed Button (tests auto-naming) -->
+                <Label Text="Test Group 4: Unnamed Button (auto-naming test)" FontSize="14" FontWeight="SemiBold" Foreground="#007ACC" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <Button Text="Unnamed Button" Background="#FF9800" Foreground="#FFFFFF" Padding="12,8" onClick="OnUnnamedButtonClick"/>
+                    <Label Text="← This button has no 'Name' attribute. It should still work via auto-naming!" FontSize="12" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                </StackPanel>
+                
+            </StackPanel>
+
+            <!-- Footer -->
+            <StackPanel Name="footerPanel" Orientation="Horizontal" Background="#1E1E1E" Grid.Row="2" Padding="16" HorizontalAlignment="Right">
+                <Button Name="clearButton" Text="Clear Counter" Background="#F48771" Foreground="#FFFFFF" Padding="12,8" onClick="OnClearClick"/>
+            </StackPanel>
+
+        </Grid>
+    </UI>
+</App>

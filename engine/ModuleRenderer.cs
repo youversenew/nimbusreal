@@ -1025,6 +1025,25 @@ namespace Nimbus.WPF
                                 NimbusTypography.Apply(modElement, tStyle);
                         }
                         break;
+
+                    // ══════════════════════════ EVENT HANDLERS ══════════════════════════
+                    case "onclick":
+                    case "onmousedown":
+                        // Store onclick handler for later execution in ModuleWindow.HandleClick()
+                        // This is the critical fix for button clicking in InModule mode
+                        string existingName = element.Id;
+                        if (string.IsNullOrEmpty(existingName) || existingName.StartsWith("Button_") || existingName.StartsWith("Label_"))
+                        {
+                            // Auto-generate a name if button doesn't have one
+                            existingName = "_nimbus_" + element.ElementType.ToLower() + "_" + Guid.NewGuid().ToString().Substring(0, 8);
+                            element.Id = existingName;
+                        }
+                        
+                        // Store handler info in Properties for ModuleWindow to access
+                        element.SetProperty("__onclick__", attrValue);
+                        element.SetProperty("__elementId__", existingName);
+                        _engine.Log("MODULE", "OnClick handler registered: " + existingName + " -> " + attrValue);
+                        break;
                     
                     default:
                         element.SetProperty(attrName, attrValue);

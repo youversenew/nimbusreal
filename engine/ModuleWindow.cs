@@ -225,6 +225,30 @@ namespace Nimbus.WPF
                 if (kvp.Key.Contains(clickPos))
                 {
                     IUIModule module = kvp.Value;
+                    
+                    // FIX #1: Check for __onclick__ handler property (from ModuleRenderer)
+                    object onclickHandler = module.GetProperty("__onclick__");
+                    if (onclickHandler != null && !string.IsNullOrEmpty(onclickHandler.ToString()))
+                    {
+                        string handlerName = onclickHandler.ToString();
+                        AddDebugLog("[CLICK] Element clicked with onclick handler: " + handlerName);
+                        
+                        try
+                        {
+                            // Execute via WpfEngine.ExecuteHandler (critical fix for InModule mode)
+                            _engine.ExecuteHandler(handlerName, module);
+                            AddDebugLog("[ACTION] Handler executed: " + handlerName);
+                        }
+                        catch (Exception ex)
+                        {
+                            AddDebugLog("[ERROR] Handler execution failed: " + ex.Message);
+                        }
+                        
+                        InvalidateVisual();
+                        return;
+                    }
+                    
+                    // FIX #2: Fallback to OnClick delegate (for legacy support)
                     if (module is CustomUIButton)
                     {
                         CustomUIButton button = (CustomUIButton)module;
@@ -248,6 +272,18 @@ namespace Nimbus.WPF
                         {
                             AddDebugLog("[ACTION] Executing toggle change action");
                             try { toggle.OnChange(); }
+                            catch { }
+                        }
+                    }
+                    else if (module is NimbusButton)
+                    {
+                        NimbusButton button = (NimbusButton)module;
+                        AddDebugLog("[CLICK] NimbusButton clicked: " + (button.Id ?? "unnamed"));
+                        
+                        if (button.OnClick != null)
+                        {
+                            AddDebugLog("[ACTION] Executing NimbusButton action");
+                            try { button.OnClick(); }
                             catch { }
                         }
                     }
