@@ -226,7 +226,8 @@ namespace Nimbus.WPF
                 FontFamily       = new FontFamily("Segoe UI"),
                 FontSize         = 13,
                 Padding          = new Thickness(0),
-                VerticalContentAlignment = VerticalAlignment.Center
+                VerticalContentAlignment = VerticalAlignment.Center,
+                ContextMenu      = null
             };
             this.Children.Add(_inputOverlay);
 
@@ -628,7 +629,9 @@ namespace Nimbus.WPF
 
             // Draw border
             Color borderColor = ParseColor(card.BorderBrush, Colors.Gray);
-            dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(borderColor), 1), bounds, card.CornerRadius, card.CornerRadius);
+            double bt = card.BorderThickness > 0 ? card.BorderThickness : 1.0;
+            if (borderColor.A > 0)
+                dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(borderColor), bt), bounds, card.CornerRadius, card.CornerRadius);
 
             // Render children with padding and spacing
             double padding = 12;
@@ -907,7 +910,8 @@ namespace Nimbus.WPF
             if (border.A > 0)
             {
                 if (IsHovered(btn)) border = Lighten(border, 0.3);
-                dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(border), 1.5), bounds, cr, cr);
+                double bt = btn.BorderThickness > 0 ? btn.BorderThickness : 1.5;
+                dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(border), bt), bounds, cr, cr);
             }
 
             // Label
