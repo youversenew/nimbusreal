@@ -466,8 +466,8 @@ namespace Nimbus.WPF
             if (_rootModule != null)
             {
                 Rect bounds = new Rect(0, 0,
-                    Math.Max(this.ActualWidth, 1),
-                    Math.Max(this.ActualHeight, 1));
+                    Math.Max(0, this.ActualWidth),
+                    Math.Max(0, this.ActualHeight));
                 // Dark background for InModule
                 drawingContext.DrawRectangle(
                     new SolidColorBrush(Color.FromArgb(255, 30, 30, 30)), null, bounds);
@@ -588,13 +588,13 @@ namespace Nimbus.WPF
                 if (panel.Direction.ToLower() == "row")
                 {
                     double childWidth = GetComponentWidth(child, availableWidth) ?? flexWidth;
-                    childBounds = new Rect(childX, childY + margin, childWidth, availableHeight - (margin * 2));
+                    childBounds = new Rect(childX, childY + margin, Math.Max(0, childWidth), Math.Max(0, availableHeight - (margin * 2)));
                     childX += childWidth + margin;
                 }
                 else
                 {
                     double childHeight = GetComponentHeight(child, availableHeight) ?? flexHeight;
-                    childBounds = new Rect(childX + margin, childY, availableWidth - (margin * 2), childHeight);
+                    childBounds = new Rect(childX + margin, childY, Math.Max(0, availableWidth - (margin * 2)), Math.Max(0, childHeight));
                     childY += childHeight + margin;
                 }
 
@@ -615,7 +615,7 @@ namespace Nimbus.WPF
                 double width = GetComponentWidth(child, bounds.Width) ?? 100;
                 double height = GetComponentHeight(child, bounds.Height) ?? 50;
 
-                Rect childBounds = new Rect(bounds.Left + left, bounds.Top + top, width, height);
+                Rect childBounds = new Rect(bounds.Left + left, bounds.Top + top, Math.Max(0, width), Math.Max(0, height));
                 RenderModuleRecursive(dc, child, childBounds);
             }
         }
@@ -633,13 +633,13 @@ namespace Nimbus.WPF
             // Render children with padding and spacing
             double padding = 12;
             double margin = 8;
-            Rect innerBounds = new Rect(bounds.Left + padding, bounds.Top + padding, bounds.Width - (padding * 2), bounds.Height - (padding * 2));
+            Rect innerBounds = new Rect(bounds.Left + padding, bounds.Top + padding, Math.Max(0, bounds.Width - (padding * 2)), Math.Max(0, bounds.Height - (padding * 2)));
             double childY = innerBounds.Top;
 
             foreach (var child in card.Children)
             {
                 double childHeight = GetComponentHeight(child, innerBounds.Height) ?? 40;
-                Rect childBounds = new Rect(innerBounds.Left, childY, innerBounds.Width, childHeight);
+                Rect childBounds = new Rect(innerBounds.Left, childY, Math.Max(0, innerBounds.Width), Math.Max(0, childHeight));
                 RenderModuleRecursive(dc, child, childBounds);
                 childY += childHeight + margin;
             }
@@ -813,7 +813,7 @@ namespace Nimbus.WPF
             dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)), null, bounds);
 
             // Draw modal box
-            Rect modalBounds = new Rect(bounds.Left + 50, bounds.Top + 50, bounds.Width - 100, bounds.Height - 100);
+            Rect modalBounds = new Rect(bounds.Left + 50, bounds.Top + 50, Math.Max(0, bounds.Width - 100), Math.Max(0, bounds.Height - 100));
             dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(230, 30, 30, 30)), null, modalBounds, 12, 12);
 
             // Render children
@@ -821,7 +821,7 @@ namespace Nimbus.WPF
             foreach (var child in modal.Children)
             {
                 double childHeight = GetComponentHeight(child, modalBounds.Height) ?? 50;
-                Rect childBounds = new Rect(modalBounds.Left + 16, childY, modalBounds.Width - 32, childHeight);
+                Rect childBounds = new Rect(modalBounds.Left + 16, childY, Math.Max(0, modalBounds.Width - 32), Math.Max(0, childHeight));
                 RenderModuleRecursive(dc, child, childBounds);
                 childY += childHeight;
             }
