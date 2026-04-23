@@ -1238,7 +1238,7 @@ private void ConvertNativeElement(XmlNode node, StringBuilder xaml, int indent)
             string lowerName = attr.Name.ToLower();
 
             // Skip custom Nimbus attributes
-            if (lowerName == "onclick" || lowerName == "hovercolor" ||
+            if (lowerName == "onclick" || lowerName == "onrightclick" || lowerName == "hovercolor" ||
                 lowerName == "pressedcolor" || lowerName == "cornerradius" ||
                 lowerName == "shadow" || lowerName == "focusbordercolor" ||
                 lowerName == "placeholder" || lowerName == "placeholdercolor" ||
@@ -2047,8 +2047,10 @@ private void ConvertButtonWithTemplate(XmlNode node, StringBuilder xaml, string 
 
     // Skip event handlers and custom Nimbus attributes
     if (lowerName == "click" || lowerName == "onclick" ||
-        lowerName == "mousedown" || lowerName == "onmousedown" || // <--- QO'SHILDI
-    lowerName == "mouseup" || lowerName == "onmouseup" ||
+        lowerName == "mousedown" || lowerName == "onmousedown" || 
+        lowerName == "mouseup" || lowerName == "onmouseup" ||
+        lowerName == "leftclick" || lowerName == "onleftclick" ||
+        lowerName == "rightclick" || lowerName == "onrightclick" ||
         lowerName == "textchanged" || lowerName == "ontextchanged" || lowerName == "onchange" ||
         lowerName == "onenter" || lowerName == "onvaluechanged" ||
         lowerName == "onmouseenter" || lowerName == "onmouseleave" ||

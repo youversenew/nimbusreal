@@ -1154,21 +1154,56 @@ namespace Nimbus.WPF
 
                     // ══════════════════════════ EVENT HANDLERS ══════════════════════════
                     case "onclick":
+                    case "leftclick":
                     case "onmousedown":
-                        // Store onclick handler for later execution in ModuleWindow.HandleClick()
-                        // This is the critical fix for button clicking in InModule mode
+                        // Store onclick handler for later execution
                         string existingName = element.Id;
                         if (string.IsNullOrEmpty(existingName) || existingName.StartsWith("Button_") || existingName.StartsWith("Label_"))
                         {
-                            // Auto-generate a name if button doesn't have one
                             existingName = "_nimbus_" + element.ElementType.ToLower() + "_" + Guid.NewGuid().ToString().Substring(0, 8);
                             element.Id = existingName;
                         }
                         
-                        // Store handler info in Properties for ModuleWindow to access
                         element.SetProperty("__onclick__", attrValue);
                         element.SetProperty("__elementId__", existingName);
                         _engine.Log("MODULE", "OnClick handler registered: " + existingName + " -> " + attrValue);
+                        
+                        // Attach event listener for leftclick events
+                        if (element is IUIModule)
+                        {
+                            IUIModule uiModule = (IUIModule)element;
+                            uiModule.AddEventListener("leftclick", (evt) =>
+                            {
+                                try { if (_engine != null) _engine.ExecuteHandler(attrValue, uiModule); }
+                                catch { }
+                            });
+                        }
+                        break;
+
+                    case "onrightclick":
+                    case "rightclick":
+                        // Store onrightclick handler
+                        string rightClickName = element.Id;
+                        if (string.IsNullOrEmpty(rightClickName) || rightClickName.StartsWith("Button_") || rightClickName.StartsWith("Label_"))
+                        {
+                            rightClickName = "_nimbus_" + element.ElementType.ToLower() + "_" + Guid.NewGuid().ToString().Substring(0, 8);
+                            element.Id = rightClickName;
+                        }
+                        
+                        element.SetProperty("__onrightclick__", attrValue);
+                        element.SetProperty("__elementId__", rightClickName);
+                        _engine.Log("MODULE", "OnRightClick handler registered: " + rightClickName + " -> " + attrValue);
+                        
+                        // Attach event listener for rightclick events
+                        if (element is IUIModule)
+                        {
+                            IUIModule uiModule = (IUIModule)element;
+                            uiModule.AddEventListener("rightclick", (evt) =>
+                            {
+                                try { if (_engine != null) _engine.ExecuteHandler(attrValue, uiModule); }
+                                catch { }
+                            });
+                        }
                         break;
                     
                     default:
