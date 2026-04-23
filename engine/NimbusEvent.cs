@@ -70,7 +70,7 @@ namespace Nimbus.WPF
 
         public override string ToString()
         {
-            return $"[{Type}] target={Target?.Id} @ {Timestamp:HH:mm:ss.fff}";
+            return string.Format("[{0}] target={1} @ {2:HH:mm:ss.fff}", Type, Target != null ? Target.Id : "null", Timestamp);
         }
     }
 
@@ -95,7 +95,7 @@ namespace Nimbus.WPF
 
         public override string ToString()
         {
-            return $"Mouse({X:F0},{Y:F0}) click={ClickCount} buttons={LeftButton}/{RightButton}/{MiddleButton}";
+            return string.Format("Mouse({0:F0},{1:F0}) click={2} buttons={3}/{4}/{5}", X, Y, ClickCount, LeftButton, RightButton, MiddleButton);
         }
     }
 

@@ -52,7 +52,7 @@ namespace Nimbus.WPF
             _listeners[element.Id][eventType].Add(handler);
 
             if (_debugLogging)
-                Console.WriteLine($"[EVENT] Listener added: {element.Id} @ {eventType}");
+                Console.WriteLine(string.Format("[EVENT] Listener added: {0} @ {1}", element.Id, eventType));
         }
 
         /// <summary>Remove event listener from element</summary>
@@ -109,7 +109,7 @@ namespace Nimbus.WPF
             ulong eventId = _eventCounter;
 
             if (_debugLogging)
-                Console.WriteLine($"\n[EVENT #{eventId}] START: {evt}");
+                Console.WriteLine(string.Format("\n[EVENT #{0}] START: {1}", eventId, evt));
 
             // Build the propagation path from target to root
             var path = BuildEventPath(evt.Target);
@@ -117,7 +117,7 @@ namespace Nimbus.WPF
             // PHASE 1: CAPTURING (root → target)
             if (useCapturing && path.Count > 1)
             {
-                if (_debugLogging) Console.WriteLine($"[EVENT #{eventId}] PHASE: Capturing (parent → target)");
+                if (_debugLogging) Console.WriteLine(string.Format("[EVENT #{0}] PHASE: Capturing (parent → target)", eventId));
                 
                 for (int i = path.Count - 1; i > 0; i--)
                 {
@@ -133,7 +133,7 @@ namespace Nimbus.WPF
             // PHASE 2: AT TARGET
             if (!evt.ImmediatePropagationStopped)
             {
-                if (_debugLogging) Console.WriteLine($"[EVENT #{eventId}] PHASE: AtTarget");
+                if (_debugLogging) Console.WriteLine(string.Format("[EVENT #{0}] PHASE: AtTarget", eventId));
                 
                 evt.Phase = EventPhase.AtTarget;
                 evt.CurrentTarget = evt.Target;
@@ -143,7 +143,7 @@ namespace Nimbus.WPF
             // PHASE 3: BUBBLING (target → root)
             if (!evt.ImmediatePropagationStopped)
             {
-                if (_debugLogging) Console.WriteLine($"[EVENT #{eventId}] PHASE: Bubbling (target → parent)");
+                if (_debugLogging) Console.WriteLine(string.Format("[EVENT #{0}] PHASE: Bubbling (target → parent)", eventId));
                 
                 evt.Phase = EventPhase.Bubbling;
                 for (int i = 1; i < path.Count; i++)
@@ -157,7 +157,7 @@ namespace Nimbus.WPF
             }
 
             if (_debugLogging)
-                Console.WriteLine($"[EVENT #{eventId}] END: {evt.Type}");
+                Console.WriteLine(string.Format("[EVENT #{0}] END: {1}", eventId, evt.Type));
         }
 
         /// <summary>
@@ -238,14 +238,14 @@ namespace Nimbus.WPF
                 try
                 {
                     if (_debugLogging)
-                        Console.WriteLine($"  [EVENT] Invoking listener for {element.Id}.{evt.Type} (phase={evt.Phase})");
+                        Console.WriteLine(string.Format("  [EVENT] Invoking listener for {0}.{1} (phase={2})", element.Id, evt.Type, evt.Phase));
 
                     listener?.Invoke(evt);
                 }
                 catch (Exception ex)
                 {
                     if (_debugLogging)
-                        Console.WriteLine($"  [ERROR] Listener exception: {ex.Message}");
+                        Console.WriteLine(string.Format("  [ERROR] Listener exception: {0}", ex.Message));
                 }
             }
         }
@@ -278,17 +278,17 @@ namespace Nimbus.WPF
             Console.WriteLine("\n═══════════════════════════════════════════════════════════");
             Console.WriteLine("EVENT DISPATCHER DEBUG INFO");
             Console.WriteLine("═══════════════════════════════════════════════════════════");
-            Console.WriteLine($"Total Events Dispatched: {_eventCounter}");
-            Console.WriteLine($"Queued Events: {_eventQueue.Count}");
-            Console.WriteLine($"Total Listeners Registered: {GetTotalListenerCount()}");
+            Console.WriteLine(string.Format("Total Events Dispatched: {0}", _eventCounter));
+            Console.WriteLine(string.Format("Queued Events: {0}", _eventQueue.Count));
+            Console.WriteLine(string.Format("Total Listeners Registered: {0}", GetTotalListenerCount()));
             Console.WriteLine("\nListeners by Element:");
 
             foreach (var kvp in _listeners)
             {
-                Console.WriteLine($"\n  [{kvp.Key}]");
+                Console.WriteLine(string.Format("\n  [{0}]", kvp.Key));
                 foreach (var typeKvp in kvp.Value)
                 {
-                    Console.WriteLine($"    - {typeKvp.Key}: {typeKvp.Value.Count} listener(s)");
+                    Console.WriteLine(string.Format("    - {0}: {1} listener(s)", typeKvp.Key, typeKvp.Value.Count));
                 }
             }
 

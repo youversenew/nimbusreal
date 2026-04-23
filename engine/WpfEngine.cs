@@ -3740,13 +3740,6 @@ public enum DrawerSide
         public string Message { get; set; }
     }
 
-    public class ClickEvent
-    {
-        public DateTime Timestamp { get; set; }
-        public string ControlName { get; set; }
-        public string ControlType { get; set; }
-    }
-
     public class BindingInfo
     {
         public string StateKey { get; set; }
