@@ -73,6 +73,8 @@ UILayout\Inputs.cs ^
 UILayout\Widgets.cs ^
 UILayout\Typography.cs ^
 UILayout\Layouts.cs ^
+NimbusEvent.cs ^
+EventDispatcher.cs ^
 WpfEngine.cs ^
 WpfUI.cs ^
 XamlRenderer.cs ^

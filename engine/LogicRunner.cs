@@ -31,13 +31,35 @@ namespace Nimbus.WPF
         /// </summary>
         public void Execute(XmlNode logicNode, object sender)
         {
+            Execute(logicNode, sender, null);
+        }
+
+        /// <summary>
+        /// Execute logic node with event context
+        /// </summary>
+        public void Execute(XmlNode logicNode, object sender, NimbusEvent evt)
+        {
             if (logicNode == null) return;
+            
+            // Store event in engine state if provided
+            if (evt != null)
+            {
+                _engine.SetVariable("__event__", evt);
+                _engine.SetVariable("__eventType__", evt.Type);
+            }
             
             foreach (XmlNode child in logicNode.ChildNodes)
             {
                 if (child.NodeType != XmlNodeType.Element) continue;
                 
                 ExecuteCommand(child, sender);
+            }
+
+            // Clean up event context
+            if (evt != null)
+            {
+                _engine.SetVariable("__event__", null);
+                _engine.SetVariable("__eventType__", null);
             }
         }
         

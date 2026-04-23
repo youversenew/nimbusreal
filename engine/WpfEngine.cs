@@ -97,6 +97,11 @@ private bool _pluginsInitialized;
         {
             get { return _compSystem; }
         }
+
+        public EventDispatcher EventSystem
+        {
+            get { return _eventDispatcher; }
+        }
         
         // Boshqa public propertylar bilan birga:
         public Dictionary<string, FrameworkElement> Controls
@@ -154,6 +159,7 @@ private LogicRunner _logicRunner;
 private ComponentSystem _compSystem;
 private XamlRenderer _xamlRenderer;
 private ModuleRenderer _moduleRenderer;
+private EventDispatcher _eventDispatcher;  // ════════ EVENT SYSTEM ════════
 private FileSystemWatcher _fileWatcher;
 private XmlDocument _appDoc;
 private Window _mainWindow;
@@ -240,6 +246,7 @@ private bool _ipcRunning;
     _logicRunner = new LogicRunner(this);
     _xamlRenderer = new XamlRenderer(this);
     _moduleRenderer = new ModuleRenderer(this);
+    _eventDispatcher = new EventDispatcher(debugLogging: false);  // ════ EVENT SYSTEM ════
     
     // Initialize ComponentSystem
     _compSystem = new ComponentSystem(this);
@@ -3168,11 +3175,11 @@ public CSharpCompiler GetCompiler()
             ExecuteHandler(handlerName, null);
         }
 
-        public void ExecuteHandler(string handlerName, object sender)
+        public void ExecuteHandler(string handlerName, object sender, NimbusEvent evt = null)
         {
             if (_debugSwitches.ContainsKey("LogEvents") && _debugSwitches["LogEvents"])
             {
-                Log("HANDLER", "Executing: " + handlerName);
+                Log("HANDLER", "Executing: " + handlerName + (evt != null ? " [" + evt.Type + "]" : ""));
             }
 
             XmlNode handler = null;
@@ -3192,7 +3199,15 @@ public CSharpCompiler GetCompiler()
                     sw = Stopwatch.StartNew();
                 }
 
-                _logicRunner.Execute(handler, sender);
+                // Pass event to logic runner if available
+                if (evt != null)
+                {
+                    _logicRunner.Execute(handler, sender, evt);
+                }
+                else
+                {
+                    _logicRunner.Execute(handler, sender);
+                }
 
                 if (sw != null)
                 {

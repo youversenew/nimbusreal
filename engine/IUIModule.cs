@@ -67,6 +67,21 @@ namespace Nimbus.WPF
         void AddChild(IUIModule child);
         void RemoveChild(IUIModule child);
         void Render();
+
+        // ═════════════════════════════════════════════════════════════
+        // EVENT SYSTEM
+        // ═════════════════════════════════════════════════════════════
+        /// <summary>Add event listener (e.g., "click", "press", "longpress")</summary>
+        void AddEventListener(string eventType, EventListener handler);
+
+        /// <summary>Remove event listener</summary>
+        void RemoveEventListener(string eventType, EventListener handler);
+
+        /// <summary>Remove all listeners of a specific type or all types</summary>
+        void RemoveAllEventListeners(string eventType = null);
+
+        /// <summary>Fire event on this element</summary>
+        void DispatchEvent(NimbusEvent evt);
     }
 
     /// <summary>
@@ -120,6 +135,103 @@ namespace Nimbus.WPF
         public virtual void Render()
         {
             // Base rendering logic - can be overridden
+        }
+
+        // ═════════════════════════════════════════════════════════════
+        // EVENT SYSTEM IMPLEMENTATION
+        // ═════════════════════════════════════════════════════════════
+        /// <summary>Add event listener to this element</summary>
+        public void AddEventListener(string eventType, EventListener handler)
+        {
+            if (string.IsNullOrEmpty(eventType) || handler == null)
+                return;
+
+            // Store listeners in properties under special key
+            string listenersKey = "__eventlisteners__";
+            if (!Properties.ContainsKey(listenersKey))
+                Properties[listenersKey] = new Dictionary<string, List<EventListener>>();
+
+            var allListeners = (Dictionary<string, List<EventListener>>)Properties[listenersKey];
+            if (!allListeners.ContainsKey(eventType))
+                allListeners[eventType] = new List<EventListener>();
+
+            allListeners[eventType].Add(handler);
+        }
+
+        /// <summary>Remove event listener</summary>
+        public void RemoveEventListener(string eventType, EventListener handler)
+        {
+            if (string.IsNullOrEmpty(eventType))
+                return;
+
+            string listenersKey = "__eventlisteners__";
+            if (!Properties.ContainsKey(listenersKey))
+                return;
+
+            var allListeners = (Dictionary<string, List<EventListener>>)Properties[listenersKey];
+            if (allListeners.ContainsKey(eventType))
+            {
+                allListeners[eventType].Remove(handler);
+                if (allListeners[eventType].Count == 0)
+                    allListeners.Remove(eventType);
+            }
+        }
+
+        /// <summary>Remove all event listeners of specific type or all types</summary>
+        public void RemoveAllEventListeners(string eventType = null)
+        {
+            string listenersKey = "__eventlisteners__";
+            if (!Properties.ContainsKey(listenersKey))
+                return;
+
+            var allListeners = (Dictionary<string, List<EventListener>>)Properties[listenersKey];
+            
+            if (eventType != null)
+            {
+                if (allListeners.ContainsKey(eventType))
+                    allListeners.Remove(eventType);
+            }
+            else
+            {
+                allListeners.Clear();
+            }
+        }
+
+        /// <summary>Dispatch event from this element (with full propagation)</summary>
+        public void DispatchEvent(NimbusEvent evt)
+        {
+            if (evt == null) return;
+            evt.Target = this;
+            
+            // Invoke local listeners
+            string listenersKey = "__eventlisteners__";
+            if (Properties.ContainsKey(listenersKey))
+            {
+                var allListeners = (Dictionary<string, List<EventListener>>)Properties[listenersKey];
+                if (allListeners.ContainsKey(evt.Type))
+                {
+                    var listeners = new List<EventListener>(allListeners[evt.Type]);
+                    foreach (var listener in listeners)
+                    {
+                        try { listener?.Invoke(evt); }
+                        catch { }
+                    }
+                }
+            }
+        }
+
+        /// <summary>Get event listeners (for debugging)</summary>
+        public int GetEventListenerCount(string eventType)
+        {
+            string listenersKey = "__eventlisteners__";
+            if (!Properties.ContainsKey(listenersKey))
+                return 0;
+
+            var allListeners = (Dictionary<string, List<EventListener>>)Properties[listenersKey];
+            if (allListeners.ContainsKey(eventType))
+                return allListeners[eventType].Count;
+            
+            return 0;
         }
     }
 

@@ -212,10 +212,46 @@ namespace Nimbus.WPF
         private IUIModule _pressedModule = null;
         private Rect      _pressedRect   = Rect.Empty;
         
+        // ═════════════════════════════════════════════════════════════
+        // EVENT SYSTEM
+        // ═════════════════════════════════════════════════════════════
+        private EventDispatcher _eventDispatcher;
+        private DateTime _mouseDownTime = DateTime.Now;
+        private const int LongPressThresholdMs = 500;  // Long press if held > 500ms
+        private System.Windows.Threading.DispatcherTimer _longPressTimer;
+        private bool _longPressTriggered = false;
+        
         public DrawingCanvas(WpfEngine engine)
         {
             _engine   = engine;
             this.Focusable = true;
+
+            // ── Initialize Event Dispatcher ──
+            _eventDispatcher = new EventDispatcher(debugLogging: false);
+
+            // ── Long Press Timer ──
+            _longPressTimer = new System.Windows.Threading.DispatcherTimer();
+            _longPressTimer.Interval = TimeSpan.FromMilliseconds(LongPressThresholdMs);
+            _longPressTimer.Tick += (s, e) =>
+            {
+                if (_pressedModule != null && !_longPressTriggered)
+                {
+                    _longPressTriggered = true;
+                    _longPressTimer.Stop();
+
+                    // Fire long press event
+                    var mouseData = new MouseData
+                    {
+                        X = _lastMousePos.X,
+                        Y = _lastMousePos.Y,
+                        LeftButton = true
+                    };
+                    var evt = new LongPressEvent(_pressedModule, mouseData, LongPressThresholdMs);
+                    DispatchNimbusEvent(evt);
+
+                    InvalidateVisual();
+                }
+            };
 
             // ── Styled TextBox overlay for real keyboard input ──
             _inputOverlay = new System.Windows.Controls.TextBox
@@ -254,6 +290,10 @@ namespace Nimbus.WPF
             // Attach real styled WPF ContextMenu — rebuilt per activation to use module's XML def
             _inputOverlay.ContextMenu = BuildWpfContextMenu(null);
 
+            // ══════════════════════════════════════════════════════════════
+            // MOUSE EVENTS - Now using Event System
+            // ══════════════════════════════════════════════════════════════
+
             // ── Mouse DOWN: track pressed module for native feel ──
             this.MouseDown += (s, e) =>
             {
@@ -263,6 +303,10 @@ namespace Nimbus.WPF
 
                 if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
                 {
+                    _mouseDownTime = DateTime.Now;
+                    _longPressTriggered = false;
+                    _longPressTimer.Start();
+
                     _pressedModule = null;
                     _pressedRect   = Rect.Empty;
                     foreach (var kvp in _clickableRegions)
@@ -270,11 +314,27 @@ namespace Nimbus.WPF
                         if (kvp.Key.Contains(pt))
                         { _pressedModule = kvp.Value; _pressedRect = kvp.Key; }
                     }
-                    if (_pressedModule != null) InvalidateVisual();
+                    
+                    if (_pressedModule != null)
+                    {
+                        // Fire mousedown event
+                        var mouseData = new MouseData
+                        {
+                            X = pt.X,
+                            Y = pt.Y,
+                            ClientX = pt.X - _pressedRect.Left,
+                            ClientY = pt.Y - _pressedRect.Top,
+                            LeftButton = true
+                        };
+                        var evt = new MouseDownEvent(_pressedModule, mouseData);
+                        DispatchNimbusEvent(evt);
+
+                        InvalidateVisual();
+                    }
                 }
                 else if (e.ChangedButton == System.Windows.Input.MouseButton.Right)
                 {
-                    HandleClick(pt, e.ChangedButton);
+                    HandleRightClick(pt);
                 }
             };
 
@@ -282,35 +342,100 @@ namespace Nimbus.WPF
             this.MouseUp += (s, e) =>
             {
                 if (e.ChangedButton != System.Windows.Input.MouseButton.Left) return;
+
+                _longPressTimer.Stop();
+
                 Point pt = e.GetPosition(this);
                 if (_pressedModule != null)
                 {
                     IUIModule pm = _pressedModule;
+                    DateTime releaseTime = DateTime.Now;
+                    double heldMs = (releaseTime - _mouseDownTime).TotalMilliseconds;
+
                     _pressedModule = null;
                     InvalidateVisual();
+
                     if (_pressedRect.Contains(pt))
-                        HandleClick(pt, System.Windows.Input.MouseButton.Left);
+                    {
+                        // Fire mouseup event
+                        var mouseData = new MouseData
+                        {
+                            X = pt.X,
+                            Y = pt.Y,
+                            ClientX = pt.X - _pressedRect.Left,
+                            ClientY = pt.Y - _pressedRect.Top,
+                            LeftButton = true
+                        };
+                        var upEvent = new MouseUpEvent(pm, mouseData);
+                        DispatchNimbusEvent(upEvent);
+
+                        // Fire click event (only if not long press)
+                        if (!_longPressTriggered && heldMs < LongPressThresholdMs)
+                        {
+                            var clickEvent = new ClickEvent(pm, mouseData, heldMs);
+                            DispatchNimbusEvent(clickEvent);
+                        }
+                    }
                 }
             };
 
-            // ── Mouse move: hover + Hand cursor ──
+            // ── Mouse move: hover + Hand cursor + emit events ──
             this.MouseMove += (s, e) =>
             {
                 _lastMousePos = e.GetPosition(this);
                 IUIModule hov = GetModuleAt(_lastMousePos);
+                
                 if (hov != _hoveredModule)
                 {
+                    // Mouse leave
+                    if (_hoveredModule != null)
+                    {
+                        var leaveEvent = new MouseLeaveEvent(_hoveredModule, new MouseData
+                        {
+                            X = _lastMousePos.X,
+                            Y = _lastMousePos.Y,
+                            LeftButton = e.LeftButton == MouseButtonState.Pressed,
+                            RightButton = e.RightButton == MouseButtonState.Pressed
+                        });
+                        DispatchNimbusEvent(leaveEvent);
+                    }
+
+                    // Mouse enter
                     _hoveredModule = hov;
+                    if (_hoveredModule != null)
+                    {
+                        var enterEvent = new MouseEnterEvent(_hoveredModule, new MouseData
+                        {
+                            X = _lastMousePos.X,
+                            Y = _lastMousePos.Y,
+                            LeftButton = e.LeftButton == MouseButtonState.Pressed,
+                            RightButton = e.RightButton == MouseButtonState.Pressed
+                        });
+                        DispatchNimbusEvent(enterEvent);
+                    }
+
                     this.Cursor = hov != null
                         ? System.Windows.Input.Cursors.Hand
                         : System.Windows.Input.Cursors.Arrow;
                     InvalidateVisual();
                 }
             };
+
             this.MouseLeave += (s, e) =>
             {
+                if (_hoveredModule != null)
+                {
+                    var leaveEvent = new MouseLeaveEvent(_hoveredModule, new MouseData
+                    {
+                        X = _lastMousePos.X,
+                        Y = _lastMousePos.Y
+                    });
+                    DispatchNimbusEvent(leaveEvent);
+                }
+
                 _hoveredModule = null;
                 _pressedModule = null;
+                _longPressTimer.Stop();
                 this.Cursor = System.Windows.Input.Cursors.Arrow;
                 InvalidateVisual();
             };
@@ -322,6 +447,53 @@ namespace Nimbus.WPF
         private bool IsHovered(IUIModule m)     { return m != null && m == _hoveredModule; }
         private bool IsInputActive(IUIModule m) { return m != null && m == _activeInputModule; }
         private bool IsPressed(IUIModule m)     { return m != null && m == _pressedModule; }
+
+        /// <summary>Dispatch Nimbus event through the event system</summary>
+        private void DispatchNimbusEvent(NimbusEvent evt)
+        {
+            if (evt == null || evt.Target == null) return;
+            evt.Target.DispatchEvent(evt);
+        }
+
+        /// <summary>Handle right-click (context menu request)</summary>
+        private void HandleRightClick(Point clickPos)
+        {
+            IUIModule module = null;
+            Rect moduleRect = Rect.Empty;
+
+            foreach (var kvp in _clickableRegions)
+            {
+                if (kvp.Key.Contains(clickPos))
+                {
+                    module = kvp.Value;
+                    moduleRect = kvp.Key;
+                }
+            }
+
+            if (module == null) return;
+
+            // Fire context request event
+            var mouseData = new MouseData
+            {
+                X = clickPos.X,
+                Y = clickPos.Y,
+                ClientX = clickPos.X - moduleRect.Left,
+                ClientY = clickPos.Y - moduleRect.Top,
+                RightButton = true
+            };
+            var contextEvent = new ContextRequestEvent(module, mouseData);
+            DispatchNimbusEvent(contextEvent);
+
+            // Also show traditional context menu for text inputs
+            if (module is NimbusTextInput || module is CustomUIInput ||
+                module is NimbusSearchInput || module is NimbusTextArea ||
+                module is NimbusPasswordInput)
+            {
+                // WPF ContextMenu on _inputOverlay handles this
+            }
+
+            HandleClick(clickPos, System.Windows.Input.MouseButton.Right);
+        }
 
         private Color Lighten(Color c, double f = 0.20)
         {

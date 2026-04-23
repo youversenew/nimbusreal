@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<App Name="Event System Demo" Width="1000" Height="700" Background="#1E1E2E" inModule="true">
+  <UI>
+    <Stack Orientation="Vertical" Background="#1E1E2E" Padding="20,20,20,20">
+      <!-- Title -->
+      <Box Width="*" Height="60" Background="#2A2A3E" CornerRadius="12" Padding="20,15,20,15" Margin="0,0,0,20">
+        <Label FontSize="28" FontWeight="Bold" Foreground="#00D7FF" Content="Nimbus Event System - Interactive Demo" TextAlignment="Center"/>
+      </Box>
+
+      <!-- Main Grid -->
+      <Stack Orientation="Horizontal" Width="*" Height="*" Spacing="20">
+        
+        <!-- LEFT: Event Target -->
+        <Stack Orientation="Vertical" Width="400" Height="*" Background="#252535" CornerRadius="12" Padding="20" Spacing="15">
+          <Label FontSize="18" FontWeight="Bold" Foreground="#FFD700" Content="📍 Event Target"/>
+          
+          <!-- Button with Events -->
+          <Box Name="btn_primary" Width="*" Height="80" Background="#0066FF" CornerRadius="10" Padding="15" 
+               onclick="OnPrimaryButtonClick" Cursor="Hand" Margin="0,10,0,0">
+            <Label Content="🔘 Click Me (Events)" FontSize="16" FontWeight="Bold" Foreground="White" TextAlignment="Center"/>
+            <EventHandlers>
+              <On Type="mousedown" Handler="OnMouseDown"/>
+              <On Type="mouseup" Handler="OnMouseUp"/>
+              <On Type="click" Handler="OnClick"/>
+              <On Type="longpress" Handler="OnLongPress"/>
+              <On Type="mouseenter" Handler="OnMouseEnter"/>
+              <On Type="mouseleave" Handler="OnMouseLeave"/>
+            </EventHandlers>
+          </Box>
+
+          <!-- Context Menu Demo -->
+          <Box Name="btn_context" Width="*" Height="70" Background="#FF6B35" CornerRadius="10" Padding="15" Cursor="Hand">
+            <Label Content="🎯 Right-Click for Context" FontSize="14" FontWeight="Bold" Foreground="White" TextAlignment="Center"/>
+            <ContextMenu Background="#161622" BorderBrush="#37375A" CornerRadius="10" FontSize="13">
+              <Item Icon="✂️" Header="Kesib olish" Action="cut"/>
+              <Item Icon="📋" Header="Nusxalash" Action="copy"/>
+              <Item Icon="🎨" Header="Custom Handler" Handler="OnContextMenuItem"/>
+              <Separator/>
+              <Item Icon="🗑️" Header="O'chirish" Action="delete" Danger="true"/>
+            </ContextMenu>
+          </Box>
+
+          <!-- Long Press Indicator -->
+          <Box Width="*" Height="50" Background="#333344" CornerRadius="8" Padding="10">
+            <Label Name="lbl_longpress" Content="⏱️ Long Press Counter: 0" FontSize="12" Foreground="#FFD700"/>
+          </Box>
+        </Stack>
+
+        <!-- CENTER: Event Log -->
+        <Stack Orientation="Vertical" Width="500" Height="*" Background="#252535" CornerRadius="12" Padding="20" Spacing="10">
+          <Label FontSize="18" FontWeight="Bold" Foreground="#00FF88" Content="📝 Event Log"/>
+          
+          <Box Width="*" Height="*" Background="#1A1A2A" CornerRadius="8" Padding="10" BorderBrush="#3A3A4A" BorderThickness="1">
+            <Label Name="lbl_eventlog" Content="Waiting for events...
+(Click, Hover, Right-click to trigger events)" 
+                   FontSize="12" Foreground="#CCCCCC" TextAlignment="Left" FontFamily="Courier New"/>
+          </Box>
+
+          <Button Width="*" Height="40" Background="#00AA00" Foreground="White" FontWeight="Bold" 
+                  Content="🔄 Clear Log" onclick="OnClearLog" CornerRadius="8"/>
+        </Stack>
+
+        <!-- RIGHT: Event Stats -->
+        <Stack Orientation="Vertical" Width="350" Height="*" Background="#252535" CornerRadius="12" Padding="20" Spacing="15">
+          <Label FontSize="18" FontWeight="Bold" Foreground="#FF00FF" Content="📊 Event Statistics"/>
+          
+          <Box Background="#1A1A2A" CornerRadius="8" Padding="15" Spacing="10">
+            <Label Name="stat_click" Content="🔘 Clicks: 0" FontSize="13" Foreground="#00D7FF"/>
+            <Label Name="stat_mousedown" Content="👇 MouseDown: 0" FontSize="13" Foreground="#00D7FF"/>
+            <Label Name="stat_mouseup" Content="👆 MouseUp: 0" FontSize="13" Foreground="#00D7FF"/>
+            <Label Name="stat_longpress" Content="⏱️ LongPress: 0" FontSize="13" Foreground="#00D7FF"/>
+            <Label Name="stat_mouseenter" Content="↗️ MouseEnter: 0" FontSize="13" Foreground="#00D7FF"/>
+            <Label Name="stat_mouseleave" Content="↙️ MouseLeave: 0" FontSize="13" Foreground="#00D7FF"/>
+            <Label Name="stat_context" Content="⊞ Context: 0" FontSize="13" Foreground="#00D7FF"/>
+          </Box>
+
+          <!-- Event System Info -->
+          <Box Background="#1A1A2A" CornerRadius="8" Padding="15">
+            <Label Name="lbl_sysinfo" Content="
+✓ Event System Active
+✓ Bubbling Enabled
+✓ Event Delegation Ready
+" FontSize="11" Foreground="#00FF88" FontFamily="Courier New"/>
+          </Box>
+        </Stack>
+
+      </Stack>
+    </Stack>
+  </UI>
+
+  <Script Language="C#">
+    <![CDATA[
+// Event counters
+int clickCount = 0;
+int mouseDownCount = 0;
+int mouseUpCount = 0;
+int longPressCount = 0;
+int mouseEnterCount = 0;
+int mouseLeaveCount = 0;
+int contextCount = 0;
+List<string> eventLog = new List<string>();
+const int MAX_LOG_LINES = 20;
+
+// Event Handlers
+public void OnPrimaryButtonClick()
+{
+    // This is called via onclick attribute (legacy)
+    // Modern way is using the event system
+}
+
+public void OnMouseDown(Nimbus.WPF.NimbusEvent evt)
+{
+    if (evt is Nimbus.WPF.MouseDownEvent mde)
+    {
+        mouseDownCount++;
+        LogEvent($"👇 MouseDown @ ({mde.Mouse.X:F0}, {mde.Mouse.Y:F0})");
+        UpdateStats();
+    }
+}
+
+public void OnMouseUp(Nimbus.WPF.NimbusEvent evt)
+{
+    if (evt is Nimbus.WPF.MouseUpEvent mue)
+    {
+        mouseUpCount++;
+        LogEvent($"👆 MouseUp @ ({mue.Mouse.X:F0}, {mue.Mouse.Y:F0})");
+        UpdateStats();
+    }
+}
+
+public void OnClick(Nimbus.WPF.NimbusEvent evt)
+{
+    if (evt is Nimbus.WPF.ClickEvent ce)
+    {
+        clickCount++;
+        LogEvent($"🔘 CLICK! Duration: {ce.Duration:F0}ms");
+        UpdateStats();
+    }
+}
+
+public void OnLongPress(Nimbus.WPF.NimbusEvent evt)
+{
+    if (evt is Nimbus.WPF.LongPressEvent lpe)
+    {
+        longPressCount++;
+        LogEvent($"⏱️ LONG PRESS! Held: {lpe.ElapsedMs:F0}ms");
+        UpdateStats();
+    }
+}
+
+public void OnMouseEnter(Nimbus.WPF.NimbusEvent evt)
+{
+    if (evt is Nimbus.WPF.MouseEnterEvent mee)
+    {
+        mouseEnterCount++;
+        LogEvent($"↗️ MouseEnter");
+        UpdateStats();
+    }
+}
+
+public void OnMouseLeave(Nimbus.WPF.NimbusEvent evt)
+{
+    if (evt is Nimbus.WPF.MouseLeaveEvent mle)
+    {
+        mouseLeaveCount++;
+        LogEvent($"↙️ MouseLeave");
+        UpdateStats();
+    }
+}
+
+public void OnContextMenuItem()
+{
+    contextCount++;
+    LogEvent($"⊞ Context Menu Item Clicked!");
+    UpdateStats();
+}
+
+public void OnClearLog()
+{
+    eventLog.Clear();
+    clickCount = 0;
+    mouseDownCount = 0;
+    mouseUpCount = 0;
+    longPressCount = 0;
+    mouseEnterCount = 0;
+    mouseLeaveCount = 0;
+    contextCount = 0;
+    LogEvent("📋 Log Cleared");
+    UpdateStats();
+}
+
+void LogEvent(string message)
+{
+    string timestamp = System.DateTime.Now.ToString("HH:mm:ss.fff");
+    eventLog.Insert(0, $"[{timestamp}] {message}");
+    if (eventLog.Count > MAX_LOG_LINES)
+        eventLog.RemoveAt(eventLog.Count - 1);
+}
+
+void UpdateStats()
+{
+    var root = Engine.State.ContainsKey("_rootModule") ? (Nimbus.WPF.IUIModule)Engine.State["_rootModule"] : null;
+    
+    // Update log display
+    var logLabel = FindElement(root, "lbl_eventlog");
+    if (logLabel is Nimbus.WPF.NimbusLabel ll)
+        ll.Content = string.Join("\n", eventLog);
+
+    // Update statistics
+    UpdateLabel(root, "stat_click", $"🔘 Clicks: {clickCount}");
+    UpdateLabel(root, "stat_mousedown", $"👇 MouseDown: {mouseDownCount}");
+    UpdateLabel(root, "stat_mouseup", $"👆 MouseUp: {mouseUpCount}");
+    UpdateLabel(root, "stat_longpress", $"⏱️ LongPress: {longPressCount}");
+    UpdateLabel(root, "stat_mouseenter", $"↗️ MouseEnter: {mouseEnterCount}");
+    UpdateLabel(root, "stat_mouseleave", $"↙️ MouseLeave: {mouseLeaveCount}");
+    UpdateLabel(root, "stat_context", $"⊞ Context: {contextCount}");
+}
+
+void UpdateLabel(Nimbus.WPF.IUIModule root, string id, string content)
+{
+    var label = FindElement(root, id);
+    if (label is Nimbus.WPF.NimbusLabel nl)
+        nl.Content = content;
+}
+
+Nimbus.WPF.IUIModule FindElement(Nimbus.WPF.IUIModule current, string id)
+{
+    if (current == null) return null;
+    if (current.Id == id) return current;
+    foreach (var child in current.Children)
+    {
+        var result = FindElement(child, id);
+        if (result != null) return result;
+    }
+    return null;
+}
+    ]]>
+  </Script>
+</App>

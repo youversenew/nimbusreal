@@ -74,6 +74,13 @@ namespace Nimbus.WPF
                     continue;
                 }
 
+                // Parse <EventHandlers> specially — do NOT add as child
+                if (child.Name == "EventHandlers")
+                {
+                    ParseEventHandlers(element, child);
+                    continue;
+                }
+
                 IUIModule childElement = RenderNode(child);
                 if (childElement != null)
                     element.AddChild(childElement);
@@ -143,6 +150,56 @@ namespace Nimbus.WPF
             }
 
             return def;
+        }
+
+        /// <summary>Parse &lt;EventHandlers&gt; XML node and register event listeners</summary>
+        private void ParseEventHandlers(IUIModule element, XmlNode ehNode)
+        {
+            if (element == null || ehNode == null) return;
+
+            foreach (XmlNode child in ehNode.ChildNodes)
+            {
+                if (child.NodeType != XmlNodeType.Element) continue;
+                if (child.Name != "On") continue;
+
+                // Get attributes: Type="click", Handler="OnClickHandler"
+                string eventType = GetAttribute(child, "Type", null);
+                string handlerName = GetAttribute(child, "Handler", null);
+
+                if (string.IsNullOrEmpty(eventType) || string.IsNullOrEmpty(handlerName))
+                    continue;
+
+                // Register listener: element.AddEventListener(eventType, handler)
+                try
+                {
+                    // Create a wrapper that calls the engine's handler
+                    EventListener listener = (evt) =>
+                    {
+                        try
+                        {
+                            // Call the user's handler function in the script context
+                            if (_engine != null)
+                            {
+                                _engine.ExecuteHandler(handlerName, element, evt);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            if (_engine != null)
+                                _engine.Log("EVENT", "Handler error: " + handlerName + " - " + ex.Message);
+                        }
+                    };
+
+                    element.AddEventListener(eventType, listener);
+                    if (_engine != null)
+                        _engine.Log("MODULE", "Event listener registered: " + element.Id + "." + eventType + " -> " + handlerName);
+                }
+                catch (Exception ex)
+                {
+                    if (_engine != null)
+                        _engine.Log("MODULE", "Failed to register event listener: " + ex.Message);
+                }
+            }
         }
 
 
