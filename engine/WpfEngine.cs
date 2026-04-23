@@ -1587,7 +1587,6 @@ public void CompileManualCCode(string moduleId, string code)
             if (!_debugSwitches.ContainsKey("LogClicks") || !_debugSwitches["LogClicks"]) return;
 
             ClickEvent click = new ClickEvent();
-            click.Timestamp = DateTime.Now;
             click.ControlName = controlName;
             click.ControlType = controlType;
 

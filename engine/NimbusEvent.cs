@@ -126,11 +126,23 @@ namespace Nimbus.WPF
     {
         public MouseData Mouse { get; set; }
         public double Duration { get; set; }  // ms held down
+        public string ControlName { get; set; }  // Backward compatibility
+        public string ControlType { get; set; }   // Backward compatibility
+
+        public ClickEvent() : base("click", null)
+        {
+            Mouse = new MouseData();
+            Duration = 0;
+            ControlName = "";
+            ControlType = "";
+        }
 
         public ClickEvent(IUIModule target, MouseData mouseData, double durationMs = 0) : base("click", target)
         {
             Mouse = mouseData ?? new MouseData();
             Duration = durationMs;
+            ControlName = "";
+            ControlType = "";
         }
     }
 

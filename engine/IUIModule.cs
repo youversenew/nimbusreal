@@ -213,7 +213,7 @@ namespace Nimbus.WPF
                     var listeners = new List<EventListener>(allListeners[evt.Type]);
                     foreach (var listener in listeners)
                     {
-                        try { listener?.Invoke(evt); }
+                        try { if (listener != null) listener.Invoke(evt); }
                         catch { }
                     }
                 }

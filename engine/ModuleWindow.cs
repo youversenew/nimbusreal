@@ -580,7 +580,7 @@ namespace Nimbus.WPF
                 itemDef.Danger, itemDef.HoverBg ?? menuDef.HoverBg, action);
         }
 
-        private System.Windows.Controls.ControlTemplate BuildContextMenuTemplate()
+        private System.Windows.Controls.ControlTemplate BuildContextMenuTemplate(NimbusContextMenuDef def = null)
         {
             var outerF = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Border));
             outerF.SetValue(System.Windows.Controls.Border.PaddingProperty, new Thickness(6));
@@ -611,7 +611,7 @@ namespace Nimbus.WPF
             return t;
         }
 
-        private System.Windows.Controls.MenuItem MakeMenuItem(string icon, string header, string shortcut, bool danger, System.Action action)
+        private System.Windows.Controls.MenuItem MakeMenuItem(string icon, string header, string shortcut, bool danger, Color? hoverBg, System.Action action)
         {
             Color fg = danger ? Color.FromRgb(255, 70, 90) : Color.FromRgb(218, 218, 228);
             var g = new System.Windows.Controls.Grid { Height = 34 };

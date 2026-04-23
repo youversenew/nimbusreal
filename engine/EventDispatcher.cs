@@ -240,7 +240,7 @@ namespace Nimbus.WPF
                     if (_debugLogging)
                         Console.WriteLine(string.Format("  [EVENT] Invoking listener for {0}.{1} (phase={2})", element.Id, evt.Type, evt.Phase));
 
-                    listener?.Invoke(evt);
+                    if (listener != null) listener.Invoke(evt);
                 }
                 catch (Exception ex)
                 {
