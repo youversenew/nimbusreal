@@ -121,6 +121,30 @@ namespace Nimbus.WPF
         }
     }
 
+    /// <summary>LEFT CLICK event - successful left click (press + release on same element)</summary>
+    public class LeftClickEvent : NimbusEvent
+    {
+        public MouseData Mouse { get; set; }
+        public double Duration { get; set; }  // ms held down
+
+        public LeftClickEvent(IUIModule target, MouseData mouseData, double durationMs = 0) : base("leftclick", target)
+        {
+            Mouse = mouseData ?? new MouseData();
+            Duration = durationMs;
+        }
+    }
+
+    /// <summary>RIGHT CLICK event - context menu click</summary>
+    public class RightClickEvent : NimbusEvent
+    {
+        public MouseData Mouse { get; set; }
+
+        public RightClickEvent(IUIModule target, MouseData mouseData) : base("rightclick", target)
+        {
+            Mouse = mouseData ?? new MouseData();
+        }
+    }
+
     /// <summary>CLICK event - successful click (press + release on same element)</summary>
     public class ClickEvent : NimbusEvent
     {

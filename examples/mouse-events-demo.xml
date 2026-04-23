@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UI xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+    Title="Mouse Events Demo - Left Click vs Right Click"
+    Width="600" Height="500"
+    Background="#1a1a2e">
+
+    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+        <StackPanel Orientation="Vertical" Margin="20" Spacing="20">
+            
+            <!-- Title -->
+            <TextBlock Text="Mouse Events Demonstration" 
+                       FontSize="32" FontWeight="Bold" Foreground="#00d4ff"
+                       HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+            <!-- Description -->
+            <TextBlock Text="Left Click: Fires 'leftclick' or 'onClick' event&#10;Right Click: Fires 'rightclick' or 'onRightClick' event"
+                       FontSize="14" Foreground="#aaa" 
+                       TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+            <!-- Demo Panel 1: Left Click Button -->
+            <Grid Background="#16213e" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                <StackPanel Orientation="Vertical" Spacing="10">
+                    <TextBlock Text="LEFT CLICK DEMO" FontSize="16" FontWeight="Bold" Foreground="#00d4ff"/>
+                    
+                    <Grid Name="leftClickButton" 
+                          Background="#0f3460" 
+                          Padding="20" 
+                          CornerRadius="6"
+                          onClick="OnLeftClick"
+                          Cursor="Hand">
+                        <TextBlock Text="👈 Left Click Here (fires 'onClick' event)"
+                                   FontSize="14" Foreground="#fff"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <TextBlock Name="leftClickStatus" 
+                               Text="Status: Waiting for left click..."
+                               FontSize="12" Foreground="#888" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Demo Panel 2: Right Click Button -->
+            <Grid Background="#16213e" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                <StackPanel Orientation="Vertical" Spacing="10">
+                    <TextBlock Text="RIGHT CLICK DEMO" FontSize="16" FontWeight="Bold" Foreground="#ff6b6b"/>
+                    
+                    <Grid Name="rightClickButton" 
+                          Background="#3a0a0a" 
+                          Padding="20" 
+                          CornerRadius="6"
+                          onRightClick="OnRightClick"
+                          Cursor="Hand">
+                        <TextBlock Text="👉 Right Click Here (fires 'onRightClick' event)"
+                                   FontSize="14" Foreground="#fff"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <TextBlock Name="rightClickStatus" 
+                               Text="Status: Waiting for right click..."
+                               FontSize="12" Foreground="#888" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Demo Panel 3: Both Events on Same Element -->
+            <Grid Background="#16213e" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                <StackPanel Orientation="Vertical" Spacing="10">
+                    <TextBlock Text="DUAL EVENT DEMO" FontSize="16" FontWeight="Bold" Foreground="#51cf66"/>
+                    
+                    <Grid Name="dualClickButton" 
+                          Background="#1a4d2e" 
+                          Padding="20" 
+                          CornerRadius="6"
+                          onClick="OnDualLeftClick"
+                          onRightClick="OnDualRightClick"
+                          Cursor="Hand">
+                        <TextBlock Text="↔️ Try Left AND Right Click on This Button"
+                                   FontSize="14" Foreground="#fff"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="15">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Left Clicks:" FontSize="11" Foreground="#51cf66"/>
+                            <TextBlock Name="leftCount" Text="0" FontSize="18" Foreground="#51cf66" FontWeight="Bold"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Right Clicks:" FontSize="11" Foreground="#ff6b6b"/>
+                            <TextBlock Name="rightCount" Text="0" FontSize="18" Foreground="#ff6b6b" FontWeight="Bold"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <!-- Event Info Panel -->
+            <Grid Background="#0f3460" CornerRadius="8" Padding="15">
+                <StackPanel Orientation="Vertical" Spacing="10">
+                    <TextBlock Text="📋 EVENT INFORMATION" FontSize="14" FontWeight="Bold" Foreground="#00d4ff"/>
+                    
+                    <Grid>
+                        <StackPanel Orientation="Vertical" Spacing="8">
+                            <TextBlock Text="Available Attributes:" FontSize="12" Foreground="#aaa"/>
+                            <TextBlock Text="• onClick=&quot;HandlerName&quot; - Fires on left click (LMB)"
+                                       FontSize="11" Foreground="#ddd" Margin="10,0,0,0"/>
+                            <TextBlock Text="• onRightClick=&quot;HandlerName&quot; - Fires on right click (RMB)"
+                                       FontSize="11" Foreground="#ddd" Margin="10,0,0,0"/>
+                            <TextBlock Text="• Mouse events also fire: mousedown, mouseup, leftclick, rightclick"
+                                       FontSize="11" Foreground="#ddd" Margin="10,0,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+
+            <!-- Footer Info -->
+            <TextBlock Text="💡 Tip: Right-click on text inputs for context menu (copy, paste, etc.)"
+                       FontSize="12" Foreground="#666" 
+                       TextWrapping="Wrap" Margin="0,10,0,0"/>
+        </StackPanel>
+    </Grid>
+
+</UI>

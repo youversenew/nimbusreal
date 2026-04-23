@@ -372,6 +372,10 @@ namespace Nimbus.WPF
                         // Fire click event (only if not long press)
                         if (!_longPressTriggered && heldMs < LongPressThresholdMs)
                         {
+                            var leftClickEvent = new LeftClickEvent(pm, mouseData, heldMs);
+                            DispatchNimbusEvent(leftClickEvent);
+                            
+                            // Also fire generic click for backward compatibility
                             var clickEvent = new ClickEvent(pm, mouseData, heldMs);
                             DispatchNimbusEvent(clickEvent);
                         }
@@ -472,7 +476,7 @@ namespace Nimbus.WPF
 
             if (module == null) return;
 
-            // Fire context request event
+            // Fire right click event
             var mouseData = new MouseData
             {
                 X = clickPos.X,
@@ -481,6 +485,10 @@ namespace Nimbus.WPF
                 ClientY = clickPos.Y - moduleRect.Top,
                 RightButton = true
             };
+            var rightClickEvent = new RightClickEvent(module, mouseData);
+            DispatchNimbusEvent(rightClickEvent);
+
+            // Fire context request event for backward compatibility
             var contextEvent = new ContextRequestEvent(module, mouseData);
             DispatchNimbusEvent(contextEvent);
 
