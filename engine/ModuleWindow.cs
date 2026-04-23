@@ -611,7 +611,7 @@ namespace Nimbus.WPF
             return t;
         }
 
-        private System.Windows.Controls.MenuItem MakeMenuItem(string icon, string header, string shortcut, bool danger, Color? hoverBg, System.Action action)
+        private System.Windows.Controls.MenuItem MakeMenuItem(string icon, string header, string shortcut, bool danger, string hoverBg, System.Action action)
         {
             Color fg = danger ? Color.FromRgb(255, 70, 90) : Color.FromRgb(218, 218, 228);
             var g = new System.Windows.Controls.Grid { Height = 34 };
