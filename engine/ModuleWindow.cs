@@ -205,17 +205,19 @@ namespace Nimbus.WPF
         private Dictionary<Rect, IUIModule> _clickableRegions = new Dictionary<Rect, IUIModule>();
         private Point _lastMousePos;
         private IUIModule _hoveredModule = null;
-        // Input overlay (transparent WPF TextBox shown on click)
         private IUIModule _activeInputModule = null;
         private Rect    _activeInputRect   = Rect.Empty;
         private System.Windows.Controls.TextBox _inputOverlay;
-
+        // Native button press tracking
+        private IUIModule _pressedModule = null;
+        private Rect      _pressedRect   = Rect.Empty;
+        
         public DrawingCanvas(WpfEngine engine)
         {
             _engine   = engine;
             this.Focusable = true;
 
-            // ── Transparent TextBox overlay for real keyboard input ──
+            // ── Styled TextBox overlay for real keyboard input ──
             _inputOverlay = new System.Windows.Controls.TextBox
             {
                 Visibility       = Visibility.Hidden,
@@ -226,8 +228,7 @@ namespace Nimbus.WPF
                 FontFamily       = new FontFamily("Segoe UI"),
                 FontSize         = 13,
                 Padding          = new Thickness(0),
-                VerticalContentAlignment = VerticalAlignment.Center,
-                ContextMenu      = null
+                VerticalContentAlignment = VerticalAlignment.Center
             };
             this.Children.Add(_inputOverlay);
 
@@ -249,15 +250,47 @@ namespace Nimbus.WPF
                     e.Key == System.Windows.Input.Key.Return)
                 { this.Focus(); e.Handled = true; }
             };
+            
+            // Attach real styled WPF ContextMenu — rebuilt per activation to use module's XML def
+            _inputOverlay.ContextMenu = BuildWpfContextMenu(null);
 
-            // ── Mouse click ──
+            // ── Mouse DOWN: track pressed module for native feel ──
             this.MouseDown += (s, e) =>
             {
                 Point pt = e.GetPosition(this);
-                // Hide input overlay if clicking outside it
                 if (_activeInputModule != null && !_activeInputRect.Contains(pt))
                     HideInputOverlay();
-                HandleClick(pt);
+
+                if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
+                {
+                    _pressedModule = null;
+                    _pressedRect   = Rect.Empty;
+                    foreach (var kvp in _clickableRegions)
+                    {
+                        if (kvp.Key.Contains(pt))
+                        { _pressedModule = kvp.Value; _pressedRect = kvp.Key; }
+                    }
+                    if (_pressedModule != null) InvalidateVisual();
+                }
+                else if (e.ChangedButton == System.Windows.Input.MouseButton.Right)
+                {
+                    HandleClick(pt, e.ChangedButton);
+                }
+            };
+
+            // ── Mouse UP: fire action only if still over same module (native feel) ──
+            this.MouseUp += (s, e) =>
+            {
+                if (e.ChangedButton != System.Windows.Input.MouseButton.Left) return;
+                Point pt = e.GetPosition(this);
+                if (_pressedModule != null)
+                {
+                    IUIModule pm = _pressedModule;
+                    _pressedModule = null;
+                    InvalidateVisual();
+                    if (_pressedRect.Contains(pt))
+                        HandleClick(pt, System.Windows.Input.MouseButton.Left);
+                }
             };
 
             // ── Mouse move: hover + Hand cursor ──
@@ -277,6 +310,7 @@ namespace Nimbus.WPF
             this.MouseLeave += (s, e) =>
             {
                 _hoveredModule = null;
+                _pressedModule = null;
                 this.Cursor = System.Windows.Input.Cursors.Arrow;
                 InvalidateVisual();
             };
@@ -287,6 +321,7 @@ namespace Nimbus.WPF
         // ── Helpers ──────────────────────────────────────────────────
         private bool IsHovered(IUIModule m)     { return m != null && m == _hoveredModule; }
         private bool IsInputActive(IUIModule m) { return m != null && m == _activeInputModule; }
+        private bool IsPressed(IUIModule m)     { return m != null && m == _pressedModule; }
 
         private Color Lighten(Color c, double f = 0.20)
         {
@@ -294,6 +329,152 @@ namespace Nimbus.WPF
                 (byte)Math.Min(255, c.R + (int)((255 - c.R) * f)),
                 (byte)Math.Min(255, c.G + (int)((255 - c.G) * f)),
                 (byte)Math.Min(255, c.B + (int)((255 - c.B) * f)));
+        }
+
+        private System.Windows.Controls.ContextMenu BuildWpfContextMenu(IUIModule module)
+        {
+            // Get the XML-defined context menu if available
+            NimbusContextMenuDef def = null;
+            if (module != null)
+            {
+                ModuleUIElement modEl = module as ModuleUIElement;
+                if (modEl != null) def = modEl.ContextMenuDef;
+            }
+
+            var cm = new System.Windows.Controls.ContextMenu();
+            cm.Template = BuildContextMenuTemplate(def);
+
+            if (def != null && def.Items.Count > 0)
+            {
+                // Use XML-defined items
+                foreach (var itemDef in def.Items)
+                {
+                    if (itemDef.IsSeparator)
+                    {
+                        cm.Items.Add(MakeSeparator());
+                        continue;
+                    }
+                    IUIModule capturedModule = module;
+                    NimbusContextMenuItemDef capturedItem = itemDef;
+                    cm.Items.Add(MakeMenuItemFromDef(capturedItem, def, () =>
+                    {
+                        ExecuteContextMenuAction(capturedItem, capturedModule);
+                    }));
+                }
+            }
+            else
+            {
+                // Default built-in items
+                cm.Items.Add(MakeMenuItem("\uD83D\uDCDD", "Nusxalash",         "Ctrl+C", false, null, () => _inputOverlay.Copy()));
+                cm.Items.Add(MakeMenuItem("\u2702",       "Kesib olish",        "Ctrl+X", false, null, () => _inputOverlay.Cut()));
+                cm.Items.Add(MakeMenuItem("\uD83D\uDCCB", "Joylash",            "Ctrl+V", false, null, () => _inputOverlay.Paste()));
+                cm.Items.Add(MakeMenuItem("\u2610",       "Hammasini tanlash",  "Ctrl+A", false, null, () => _inputOverlay.SelectAll()));
+                cm.Items.Add(MakeSeparator());
+                cm.Items.Add(MakeMenuItem("\u274C",       "O'chirish",          "",       true,  null, () => { _inputOverlay.SelectedText = ""; }));
+            }
+            return cm;
+        }
+
+        private void ExecuteContextMenuAction(NimbusContextMenuItemDef item, IUIModule module)
+        {
+            // Built-in actions
+            if (!string.IsNullOrEmpty(item.Action))
+            {
+                switch (item.Action.ToLower())
+                {
+                    case "copy":      _inputOverlay.Copy();               return;
+                    case "cut":       _inputOverlay.Cut();                return;
+                    case "paste":     _inputOverlay.Paste();              return;
+                    case "selectall": _inputOverlay.SelectAll();          return;
+                    case "delete":    _inputOverlay.SelectedText = "";   return;
+                    case "undo":      _inputOverlay.Undo();               return;
+                }
+            }
+            // Engine handler
+            if (!string.IsNullOrEmpty(item.Handler) && _engine != null)
+            {
+                try { _engine.ExecuteHandler(item.Handler, module); }
+                catch { }
+            }
+        }
+
+        private System.Windows.Controls.MenuItem MakeMenuItemFromDef(
+            NimbusContextMenuItemDef itemDef,
+            NimbusContextMenuDef menuDef,
+            System.Action action)
+        {
+            return MakeMenuItem(
+                itemDef.Icon, itemDef.Header, itemDef.Shortcut,
+                itemDef.Danger, itemDef.HoverBg ?? menuDef.HoverBg, action);
+        }
+
+        private System.Windows.Controls.ControlTemplate BuildContextMenuTemplate()
+        {
+            var outerF = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Border));
+            outerF.SetValue(System.Windows.Controls.Border.PaddingProperty, new Thickness(6));
+
+            var cardF = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Border));
+            cardF.SetValue(System.Windows.Controls.Border.BackgroundProperty,
+                new SolidColorBrush(Color.FromRgb(22, 22, 34)));
+            cardF.SetValue(System.Windows.Controls.Border.CornerRadiusProperty, new CornerRadius(10));
+            cardF.SetValue(System.Windows.Controls.Border.BorderBrushProperty,
+                new SolidColorBrush(Color.FromArgb(55, 160, 140, 255)));
+            cardF.SetValue(System.Windows.Controls.Border.BorderThicknessProperty, new Thickness(1));
+            cardF.SetValue(System.Windows.Controls.Border.PaddingProperty, new Thickness(4));
+
+            var effectF = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Border));
+            effectF.SetValue(System.Windows.Controls.Border.BackgroundProperty,
+                new SolidColorBrush(Color.FromArgb(10, 255, 255, 255)));
+            effectF.SetValue(System.Windows.Controls.Border.CornerRadiusProperty, new CornerRadius(8));
+
+            var panelF = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.StackPanel));
+            panelF.SetValue(System.Windows.Controls.StackPanel.IsItemsHostProperty, true);
+
+            effectF.AppendChild(panelF);
+            cardF.AppendChild(effectF);
+            outerF.AppendChild(cardF);
+
+            var t = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.ContextMenu));
+            t.VisualTree = outerF;
+            return t;
+        }
+
+        private System.Windows.Controls.MenuItem MakeMenuItem(string icon, string header, string shortcut, bool danger, System.Action action)
+        {
+            Color fg = danger ? Color.FromRgb(255, 70, 90) : Color.FromRgb(218, 218, 228);
+            var g = new System.Windows.Controls.Grid { Height = 34 };
+            g.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(22) });
+            g.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
+
+            var ic = new System.Windows.Controls.TextBlock { Text = icon, FontSize = 13, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, Foreground = new SolidColorBrush(fg) };
+            System.Windows.Controls.Grid.SetColumn(ic, 0);
+
+            var hd = new System.Windows.Controls.TextBlock { Text = header, FontSize = 13, FontFamily = new FontFamily("Segoe UI"), VerticalAlignment = VerticalAlignment.Center, Foreground = new SolidColorBrush(fg) };
+            System.Windows.Controls.Grid.SetColumn(hd, 1);
+            g.Children.Add(ic); g.Children.Add(hd);
+
+            if (!string.IsNullOrEmpty(shortcut))
+            {
+                var sc = new System.Windows.Controls.TextBlock { Text = shortcut, FontSize = 11, FontFamily = new FontFamily("Segoe UI"), VerticalAlignment = VerticalAlignment.Center, Foreground = new SolidColorBrush(Color.FromArgb(100, 180, 180, 200)), Margin = new Thickness(12,0,0,0) };
+                System.Windows.Controls.Grid.SetColumn(sc, 2);
+                g.Children.Add(sc);
+            }
+
+            var item = new System.Windows.Controls.MenuItem { Header = g, Padding = new Thickness(8,0,12,0), Background = System.Windows.Media.Brushes.Transparent, BorderThickness = new Thickness(0) };
+            item.Click += (s, e) => action();
+            var hov = new SolidColorBrush(Color.FromArgb(28, 255, 255, 255));
+            item.MouseEnter += (s, e) => ((System.Windows.Controls.MenuItem)s).Background = hov;
+            item.MouseLeave += (s, e) => ((System.Windows.Controls.MenuItem)s).Background = System.Windows.Media.Brushes.Transparent;
+            return item;
+        }
+
+        private System.Windows.Controls.Separator MakeSeparator()
+        {
+            var sep = new System.Windows.Controls.Separator();
+            sep.Margin = new Thickness(10, 3, 10, 3);
+            sep.Background = new SolidColorBrush(Color.FromArgb(40, 200, 200, 255));
+            return sep;
         }
 
         private void ShowInputOverlay(IUIModule module, Rect bounds)
@@ -342,7 +523,7 @@ namespace Nimbus.WPF
             return found;
         }
 
-        private void HandleClick(Point clickPos)
+        private void HandleClick(Point clickPos, System.Windows.Input.MouseButton button)
         {
             // Find which element was clicked (last match = topmost)
             IUIModule clickedModule = null;
@@ -363,6 +544,9 @@ namespace Nimbus.WPF
                 module is NimbusSearchInput || module is NimbusTextArea ||
                 module is NimbusPasswordInput)
             {
+                if (button == System.Windows.Input.MouseButton.Right)
+                    return; // WPF ContextMenu on _inputOverlay handles right-click
+                
                 ShowInputOverlay(module, clickedRect);
                 AddDebugLog("[CLICK] Input focused: " + (module.Id ?? module.ElementType));
                 return;
@@ -471,7 +655,7 @@ namespace Nimbus.WPF
                     Math.Max(0, this.ActualHeight));
                 // Dark background for InModule
                 drawingContext.DrawRectangle(
-                    new SolidColorBrush(Color.FromArgb(255, 30, 30, 30)), null, bounds);
+                    new SolidColorBrush(ParseColor(null, Color.FromArgb(255, 10, 10, 18))), null, bounds);
                 RenderModuleRecursive(drawingContext, _rootModule, bounds);
             }
 
@@ -548,16 +732,17 @@ namespace Nimbus.WPF
 
             // Get padding/spacing
             double padding = ParseDouble(panel.Padding ?? "0", 0);
-            double margin = ParseDouble(panel.Margin ?? "0", 5);
-            
+            double gap     = ParseDouble(panel.Gap     ?? "0", 0);
+
             // Calculate available space
-            double availableWidth = bounds.Width - (padding * 2);
+            double availableWidth  = bounds.Width  - (padding * 2);
             double availableHeight = bounds.Height - (padding * 2);
-            
-            // Count total flex items and fixed items
+
+            // Count fixed sizes and flex items
             double totalFixedWidth = 0;
             double totalFixedHeight = 0;
             int flexCount = 0;
+            int childCount = panel.Children.Count;
 
             foreach (var child in panel.Children)
             {
@@ -575,32 +760,47 @@ namespace Nimbus.WPF
                 }
             }
 
+            // Total gap space
+            double totalGap = childCount > 1 ? gap * (childCount - 1) : 0;
+
             // Distribute flex space
-            double flexWidth = flexCount > 0 ? (availableWidth - totalFixedWidth - (margin * panel.Children.Count)) / flexCount : 0;
-            double flexHeight = flexCount > 0 ? (availableHeight - totalFixedHeight - (margin * panel.Children.Count)) / flexCount : 0;
+            double flexWidth  = flexCount > 0 ? (availableWidth  - totalFixedWidth  - totalGap) / flexCount : 0;
+            double flexHeight = flexCount > 0 ? (availableHeight - totalFixedHeight - totalGap) / flexCount : 0;
 
             // Render children
             double childX = bounds.Left + padding;
-            double childY = bounds.Top + padding;
+            double childY = bounds.Top  + padding;
 
+            dc.PushClip(new RectangleGeometry(bounds));
+
+            bool isFirst = true;
             foreach (var child in panel.Children)
             {
+                if (!isFirst)
+                {
+                    if (panel.Direction.ToLower() == "row") childX += gap;
+                    else childY += gap;
+                }
+                isFirst = false;
+
                 Rect childBounds;
                 if (panel.Direction.ToLower() == "row")
                 {
                     double childWidth = GetComponentWidth(child, availableWidth) ?? flexWidth;
-                    childBounds = new Rect(childX, childY + margin, Math.Max(0, childWidth), Math.Max(0, availableHeight - (margin * 2)));
-                    childX += childWidth + margin;
+                    childBounds = new Rect(childX, childY, Math.Max(0, childWidth), Math.Max(0, availableHeight));
+                    childX += childWidth;
                 }
                 else
                 {
                     double childHeight = GetComponentHeight(child, availableHeight) ?? flexHeight;
-                    childBounds = new Rect(childX + margin, childY, Math.Max(0, availableWidth - (margin * 2)), Math.Max(0, childHeight));
-                    childY += childHeight + margin;
+                    childBounds = new Rect(childX, childY, Math.Max(0, availableWidth), Math.Max(0, childHeight));
+                    childY += childHeight;
                 }
 
                 RenderModuleRecursive(dc, child, childBounds);
             }
+
+            dc.Pop(); // Remove clip
         }
 
         private void RenderAbsolutePanel(DrawingContext dc, CustomUIAbsolutePanel panel, Rect bounds)
@@ -633,19 +833,26 @@ namespace Nimbus.WPF
             if (borderColor.A > 0)
                 dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(borderColor), bt), bounds, card.CornerRadius, card.CornerRadius);
 
-            // Render children with padding and spacing
-            double padding = 12;
-            double margin = 8;
-            Rect innerBounds = new Rect(bounds.Left + padding, bounds.Top + padding, Math.Max(0, bounds.Width - (padding * 2)), Math.Max(0, bounds.Height - (padding * 2)));
+            // Render children with padding, stacking sequentially
+            double padding = ParseDouble(card.Padding ?? "16", 16);
+            double gap = 8;
+            Rect innerBounds = new Rect(
+                bounds.Left + padding, bounds.Top + padding,
+                Math.Max(0, bounds.Width - padding * 2),
+                Math.Max(0, bounds.Height - padding * 2));
             double childY = innerBounds.Top;
+
+            dc.PushClip(new RectangleGeometry(bounds, card.CornerRadius, card.CornerRadius));
 
             foreach (var child in card.Children)
             {
-                double childHeight = GetComponentHeight(child, innerBounds.Height) ?? 40;
-                Rect childBounds = new Rect(innerBounds.Left, childY, Math.Max(0, innerBounds.Width), Math.Max(0, childHeight));
+                double childH = GetComponentHeight(child, innerBounds.Height) ?? 40;
+                Rect childBounds = new Rect(innerBounds.Left, childY, innerBounds.Width, Math.Max(0, childH));
                 RenderModuleRecursive(dc, child, childBounds);
-                childY += childHeight + margin;
+                childY += childH + gap;
             }
+            
+            dc.Pop(); // Remove clip
         }
 
         private void RenderButton(DrawingContext dc, CustomUIButton button, Rect bounds)
@@ -1013,15 +1220,22 @@ namespace Nimbus.WPF
                 dc.DrawText(lbl, new Point(bounds.Left + 12, bounds.Top - 8));
             }
             // Value or placeholder
+            bool active = IsInputActive(inp);
             string display = string.IsNullOrEmpty(inp.Value) ? inp.Placeholder : inp.Value;
-            Color textColor = string.IsNullOrEmpty(inp.Value)
+            bool showPlaceholder = string.IsNullOrEmpty(inp.Value) && !active;
+            Color textColor = showPlaceholder
                 ? ParseColor(inp.PlaceholderColor, Color.FromArgb(255, 100, 100, 100))
                 : ParseColor(inp.Foreground, Colors.White);
-            FormattedText ft = new FormattedText(display ?? "",
-                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI"), inp.FontSize > 0 ? inp.FontSize : 14,
-                new SolidColorBrush(textColor));
-            dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + (bounds.Height - ft.Height) / 2));
+            string textToShow = showPlaceholder ? inp.Placeholder : (active ? "" : display);
+
+            if (!string.IsNullOrEmpty(textToShow))
+            {
+                FormattedText ft = new FormattedText(textToShow,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), inp.FontSize > 0 ? inp.FontSize : 14,
+                    new SolidColorBrush(textColor));
+                dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + (bounds.Height - ft.Height) / 2));
+            }
         }
 
         private void RenderNimbusTextArea(DrawingContext dc, NimbusTextArea ta, Rect bounds)
@@ -1031,16 +1245,23 @@ namespace Nimbus.WPF
             Color border = ParseColor(ta.BorderBrush, Color.FromArgb(255, 85, 85, 85));
             dc.DrawRoundedRectangle(new SolidColorBrush(bg), new Pen(new SolidColorBrush(border), 1.5),
                 bounds, ta.CornerRadius, ta.CornerRadius);
+            bool active = IsInputActive(ta);
             string display = string.IsNullOrEmpty(ta.Value) ? ta.Placeholder : ta.Value;
-            Color tc = string.IsNullOrEmpty(ta.Value)
+            bool showPlaceholder = string.IsNullOrEmpty(ta.Value) && !active;
+            Color tc = showPlaceholder
                 ? Color.FromArgb(255, 100, 100, 100)
                 : ParseColor(ta.Foreground, Colors.White);
-            FormattedText ft = new FormattedText(display ?? "",
-                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI"), ta.FontSize > 0 ? ta.FontSize : 14,
-                new SolidColorBrush(tc));
-            ft.MaxTextWidth = bounds.Width - 24;
-            dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + 12));
+            string textToShow = showPlaceholder ? ta.Placeholder : (active ? "" : display);
+
+            if (!string.IsNullOrEmpty(textToShow))
+            {
+                FormattedText ft = new FormattedText(textToShow,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), ta.FontSize > 0 ? ta.FontSize : 14,
+                    new SolidColorBrush(tc));
+                ft.MaxTextWidth = bounds.Width - 24;
+                dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + 12));
+            }
         }
 
         private void RenderNimbusSearchInput(DrawingContext dc, NimbusSearchInput si, Rect bounds)
@@ -1059,12 +1280,19 @@ namespace Nimbus.WPF
                     new Typeface("Segoe UI"), 14, new SolidColorBrush(Color.FromArgb(255, 158, 158, 158)));
                 dc.DrawText(icon, new Point(bounds.Left + 10, bounds.Top + (bounds.Height - icon.Height) / 2));
             }
+            bool active = IsInputActive(si);
             string display = string.IsNullOrEmpty(si.Value) ? si.Placeholder : si.Value;
-            Color tc = string.IsNullOrEmpty(si.Value) ? Color.FromArgb(255, 100, 100, 100) : ParseColor(si.Foreground, Colors.White);
-            FormattedText ft = new FormattedText(display ?? "",
-                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI"), 14, new SolidColorBrush(tc));
-            dc.DrawText(ft, new Point(bounds.Left + 32, bounds.Top + (bounds.Height - ft.Height) / 2));
+            bool showPlaceholder = string.IsNullOrEmpty(si.Value) && !active;
+            Color tc = showPlaceholder ? Color.FromArgb(255, 100, 100, 100) : ParseColor(si.Foreground, Colors.White);
+            string textToShow = showPlaceholder ? si.Placeholder : (active ? "" : display);
+
+            if (!string.IsNullOrEmpty(textToShow))
+            {
+                FormattedText ft = new FormattedText(textToShow,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 14, new SolidColorBrush(tc));
+                dc.DrawText(ft, new Point(bounds.Left + 32, bounds.Top + (bounds.Height - ft.Height) / 2));
+            }
         }
 
         private void RenderNimbusPasswordInput(DrawingContext dc, NimbusPasswordInput pi, Rect bounds)
@@ -1075,14 +1303,21 @@ namespace Nimbus.WPF
             dc.DrawRoundedRectangle(new SolidColorBrush(bg),
                 new Pen(new SolidColorBrush(ParseColor(pi.BorderBrush, Color.FromArgb(255, 85, 85, 85))), 1.5),
                 bounds, pi.CornerRadius, pi.CornerRadius);
+            bool active = IsInputActive(pi);
             string display = string.IsNullOrEmpty(pi.Value) ? pi.Placeholder
                 : (pi.IsPasswordVisible ? pi.Value : new string('●', pi.Value.Length));
-            Color tc = string.IsNullOrEmpty(pi.Value) ? Color.FromArgb(255, 100, 100, 100) : ParseColor(pi.Foreground, Colors.White);
-            FormattedText ft = new FormattedText(display ?? "",
-                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI"), pi.FontSize > 0 ? pi.FontSize : 14,
-                new SolidColorBrush(tc));
-            dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + (bounds.Height - ft.Height) / 2));
+            bool showPlaceholder = string.IsNullOrEmpty(pi.Value) && !active;
+            Color tc = showPlaceholder ? Color.FromArgb(255, 100, 100, 100) : ParseColor(pi.Foreground, Colors.White);
+            string textToShow = showPlaceholder ? pi.Placeholder : (active ? "" : display);
+
+            if (!string.IsNullOrEmpty(textToShow))
+            {
+                FormattedText ft = new FormattedText(textToShow,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), pi.FontSize > 0 ? pi.FontSize : 14,
+                    new SolidColorBrush(tc));
+                dc.DrawText(ft, new Point(bounds.Left + 12, bounds.Top + (bounds.Height - ft.Height) / 2));
+            }
             // Eye icon
             if (pi.ShowToggleButton)
             {
@@ -1365,7 +1600,7 @@ namespace Nimbus.WPF
             if (module is ModuleUIElement)
             {
                 string heightStr = ((ModuleUIElement)module).Height;
-                if (heightStr != null)
+                if (heightStr != null && heightStr != "Auto")
                 {
                     if (heightStr == "*") return parentHeight;
                     if (heightStr.EndsWith("%"))
@@ -1375,6 +1610,29 @@ namespace Nimbus.WPF
                     }
                     double val;
                     if (double.TryParse(heightStr, out val)) return val;
+                }
+                
+                // Dynamic height calculation for FlexPanel if Auto/Null
+                CustomUIFlexPanel flex = module as CustomUIFlexPanel;
+                if (flex != null)
+                {
+                    double totalH = 0;
+                    double margin = ParseDouble(flex.Margin ?? "0", 8);
+                    double gap = ParseDouble(flex.Gap ?? "0", 0);
+                    bool isRow = flex.Direction.ToLower() == "row";
+                    
+                    foreach (var c in flex.Children)
+                    {
+                        double childH = GetComponentHeight(c, parentHeight) ?? 40;
+                        if (isRow)
+                            totalH = Math.Max(totalH, childH);
+                        else
+                            totalH += childH + gap;
+                    }
+                    // Add padding
+                    double padding = ParseDouble(flex.Padding ?? "0", 0);
+                    totalH += padding * 2;
+                    return totalH;
                 }
             }
             return null;

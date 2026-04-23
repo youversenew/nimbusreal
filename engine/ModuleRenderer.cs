@@ -63,19 +63,88 @@ namespace Nimbus.WPF
             // Process children
             foreach (XmlNode child in node.ChildNodes)
             {
-                if (child.NodeType == XmlNodeType.Element)
+                if (child.NodeType != XmlNodeType.Element) continue;
+
+                // Parse <ContextMenu> specially — do NOT add as child
+                if (child.Name == "ContextMenu")
                 {
-                    IUIModule childElement = RenderNode(child);
-                    if (childElement != null)
-                    {
-                        element.AddChild(childElement);
-                    }
+                    ModuleUIElement modEl = element as ModuleUIElement;
+                    if (modEl != null)
+                        modEl.ContextMenuDef = ParseContextMenuDef(child);
+                    continue;
                 }
+
+                IUIModule childElement = RenderNode(child);
+                if (childElement != null)
+                    element.AddChild(childElement);
             }
 
             _engine.Log("MODULE", "Rendered: " + elementType + " (id=" + elementId + ")");
             return element;
         }
+
+        /// <summary>Parse a &lt;ContextMenu&gt; XML node into a NimbusContextMenuDef.</summary>
+        private NimbusContextMenuDef ParseContextMenuDef(XmlNode cmNode)
+        {
+            var def = new NimbusContextMenuDef();
+
+            // ── Menu-level attributes ──
+            if (cmNode.Attributes != null)
+            {
+                foreach (XmlAttribute attr in cmNode.Attributes)
+                {
+                    switch (attr.Name.ToLower())
+                    {
+                        case "background":   def.Background   = attr.Value; break;
+                        case "borderbrush":  def.BorderBrush  = attr.Value; break;
+                        case "cornerradius": double cr; if (double.TryParse(attr.Value, out cr)) def.CornerRadius = cr; break;
+                        case "hoverbg":      def.HoverBg      = attr.Value; break;
+                        case "fontsize":     double fs; if (double.TryParse(attr.Value, out fs)) def.FontSize = fs; break;
+                        case "fontfamily":   def.FontFamily   = attr.Value; break;
+                        case "itemheight":   double ih; if (double.TryParse(attr.Value, out ih)) def.ItemHeight = ih; break;
+                    }
+                }
+            }
+
+            // ── Item children ──
+            foreach (XmlNode child in cmNode.ChildNodes)
+            {
+                if (child.NodeType != XmlNodeType.Element) continue;
+
+                if (child.Name == "Separator")
+                {
+                    def.Items.Add(new NimbusContextMenuItemDef { IsSeparator = true });
+                    continue;
+                }
+
+                if (child.Name == "Item" || child.Name == "MenuItem")
+                {
+                    var item = new NimbusContextMenuItemDef();
+                    if (child.Attributes != null)
+                    {
+                        foreach (XmlAttribute a in child.Attributes)
+                        {
+                            switch (a.Name.ToLower())
+                            {
+                                case "icon":       item.Icon       = a.Value; break;
+                                case "header":     item.Header     = a.Value; break;
+                                case "shortcut":   item.Shortcut   = a.Value; break;
+                                case "danger":     item.Danger     = a.Value.ToLower() == "true"; break;
+                                case "handler":    item.Handler    = a.Value; break;
+                                case "action":     item.Action     = a.Value; break;
+                                case "foreground": item.Foreground = a.Value; break;
+                                case "hoverbg":    item.HoverBg    = a.Value; break;
+                                case "background": item.Background = a.Value; break;
+                            }
+                        }
+                    }
+                    def.Items.Add(item);
+                }
+            }
+
+            return def;
+        }
+
 
         /// <summary>
         /// Create appropriate element based on type.

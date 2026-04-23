@@ -4,6 +4,52 @@ using System.Xml;
 
 namespace Nimbus.WPF
 {
+    // ══════════════════════════════════════════════════════════
+    // Context Menu — XML-driven definition
+    // ══════════════════════════════════════════════════════════
+
+    /// <summary>A single item inside a Nimbus context menu.</summary>
+    public class NimbusContextMenuItemDef
+    {
+        public bool IsSeparator { get; set; }
+        public string Icon     { get; set; }   // emoji / text icon
+        public string Header   { get; set; }   // display text
+        public string Shortcut { get; set; }   // e.g. Ctrl+C
+        public bool   Danger   { get; set; }   // red color if true
+        public string Handler  { get; set; }   // engine handler name  (optional)
+        // Built-in actions: "Copy", "Paste", "SelectAll", "Delete", "Cut", "Undo"
+        public string Action   { get; set; }
+        // Styling overrides
+        public string Foreground    { get; set; }
+        public string HoverBg       { get; set; }
+        public string Background    { get; set; }
+    }
+
+    /// <summary>Full context menu definition parsed from XML.</summary>
+    public class NimbusContextMenuDef
+    {
+        public string Background   { get; set; }
+        public string BorderBrush  { get; set; }
+        public double CornerRadius { get; set; }
+        public string HoverBg      { get; set; }
+        public double FontSize     { get; set; }
+        public string FontFamily   { get; set; }
+        public double ItemHeight   { get; set; }
+        public List<NimbusContextMenuItemDef> Items { get; set; }
+
+        public NimbusContextMenuDef()
+        {
+            Background   = "#161622";
+            BorderBrush  = "#37375A";
+            CornerRadius = 10;
+            HoverBg      = "#FFFFFF1E";
+            FontSize     = 13;
+            FontFamily   = "Segoe UI";
+            ItemHeight   = 36;
+            Items        = new List<NimbusContextMenuItemDef>();
+        }
+    }
+
     /// <summary>
     /// IUIModule - Interface for custom UI elements created without WPF
     /// Supports: Layout, Styling, Events, Rendering
@@ -153,6 +199,10 @@ namespace Nimbus.WPF
         public string Style { get; set; }       // Custom style name
         public string Theme { get; set; }       // Light, Dark, Accent
         public string AccentColor { get; set; } // Override accent color
+
+        // ── XML-driven context menu (optional) ──────────────────────
+        public NimbusContextMenuDef ContextMenuDef { get; set; }
+
 
         public ModuleUIElement(string id, string type) : base(id, type)
         {

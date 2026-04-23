@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<App Name="Nimbus Engine Premium UI" Width="1200" Height="800" Background="#0A0A0F" inModule="true">
+<App Name="Nimbus Engine Premium UI" Width="1200" Height="800" Background="#0A0A12" inModule="true">
 
     <Logic>
         <Var Name="clickCount" Value="0" Type="int"/>
@@ -21,87 +21,91 @@
     </Logic>
 
     <UI>
-        <FlexPanel Direction="Column" Gap="20" Background="#0A0A0F" Padding="32" Width="100%" Height="100%">
+        <FlexPanel Direction="Column" Gap="28" Background="#0A0A12" Padding="40" Width="100%" Height="100%">
             
-            <!-- HEADER (Fully responsive width) -->
-            <FlexPanel Direction="Row" Gap="16" Height="60" Width="100%">
-                <Avatar Initials="NB" AvatarColor="#00E676" Shape="Circle" Width="48" Height="48" StatusDot="Online" StatusDotColor="#00E676"/>
-                <FlexPanel Direction="Column" Gap="4" Width="400" Height="48">
-                    <Label Text="NIMBUS ENGINE v3.0" FontSize="18" FontWeight="Bold" Foreground="#00E676"/>
-                    <Label Text="Premium InModule Interactive UI (100% Responsive)" FontSize="12" Foreground="#8888AA"/>
+            <!-- HEADER -->
+            <FlexPanel Direction="Row" Gap="0" Height="70" Width="100%">
+                <FlexPanel Direction="Row" Gap="18" Width="*">
+                    <Avatar Initials="N" AvatarColor="#6C63FF" Shape="Rounded" Width="60" Height="60" StatusDot="Online" StatusDotColor="#00E676"/>
+                    <FlexPanel Direction="Column" Gap="4" Width="400" Height="60">
+                        <Label Text="NIMBUS ENGINE PRO" FontSize="22" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        <Label Text="Advanced InModule Interactive Workspace v3.1" FontSize="13" Foreground="#777799"/>
+                    </FlexPanel>
                 </FlexPanel>
-                <LinkButton Text="Hujjatlar →" Url="https://docs.nimbus.com" LinkColor="#00E676" ShowUnderline="true"/>
-                <LinkButton Text="GitHub repo →" Url="https://github.com" LinkColor="#7C6FFF" ShowUnderline="true"/>
+                
+                <FlexPanel Direction="Row" Gap="24" Width="Auto" Height="60">
+                     <LinkButton Text="Hujjatlar" Url="https://docs.nimbus.com" LinkColor="#00E676" ShowUnderline="false" FontSize="14"/>
+                     <LinkButton Text="GitHub Repository" Url="https://github.com" LinkColor="#7C6FFF" ShowUnderline="false" FontSize="14"/>
+                </FlexPanel>
             </FlexPanel>
 
-            <!-- CARDS ROW (Responsive Cards taking remaining space equally because Width is not set) -->
-            <FlexPanel Direction="Row" Gap="24" Height="220" Width="100%">
+            <!-- MAIN CARDS -->
+            <FlexPanel Direction="Row" Gap="28" Height="280" Width="100%">
                 
-                <!-- Card 1: Controls -->
-                <Card Height="220" Background="#12121A" BorderBrush="#2A2A3E" BorderThickness="1.5" CornerRadius="16" Padding="20">
-                    <Label Text="BOSHQARUV PANEL" FontSize="11" FontWeight="Bold" Foreground="#FF0055"/>
-                    <Label id="lblStatus" Text="Tizim kutish rejimida..." FontSize="13" Foreground="#E0E0E0" Margin="0,12,0,0"/>
+                <Card Height="280" Background="#14141F" BorderBrush="#2A2A3E" BorderThickness="1" CornerRadius="20" Padding="28">
+                    <Label Text="BOSHQARUV PANEL" FontSize="11" FontWeight="Bold" Foreground="#6C63FF"/>
+                    <Label id="lblStatus" Text="Tizim kutish rejimida..." FontSize="15" Foreground="#EEEEFF" Margin="0,18,0,0"/>
                     
-                    <FlexPanel Direction="Column" Gap="12" Margin="0,16,0,0" Width="100%">
-                        <!-- User requested custom button: Kok rang, Oq border, qalin border, rounded -->
-                        <NimbusButton Text="🔹 Maxsus UI Tugma" Width="100%" Height="44" CornerRadius="22" Background="#0055FF" TextColor="#FFFFFF" BorderBrush="#FFFFFF" BorderThickness="2" onclick="OnCustomClick"/>
-                        <NimbusButton Text="♻️ Yangilash" Width="100%" Height="44" CornerRadius="8" Background="#2A2A3E" TextColor="#AAAACC" onclick="OnCustomClick"/>
+                    <FlexPanel Direction="Column" Gap="16" Margin="0,32,0,0" Width="100%">
+                        <NimbusButton Text="✨ Maxsus UI Tugma" Width="100%" Height="52" CornerRadius="12" Background="#6C63FF" TextColor="#FFFFFF" BorderBrush="#8E85FF" BorderThickness="1.2" onclick="OnCustomClick"/>
+                        <NimbusButton Text="♻️ Tizimni yangilash" Width="100%" Height="52" CornerRadius="12" Background="#1C1C28" TextColor="#8888AA" BorderBrush="#2A2A3E" BorderThickness="1" onclick="OnCustomClick"/>
                     </FlexPanel>
                 </Card>
 
-                <!-- Card 2: Status & Sliders -->
-                <Card Height="220" Background="#12121A" BorderBrush="#00D2FF" BorderThickness="2" CornerRadius="16" Padding="20">
-                    <Label Text="QURILMA HOLATI (Qalin Border)" FontSize="11" FontWeight="Bold" Foreground="#00D2FF"/>
-                    <Label id="lblPower" Text="Qurilma quvvati: 45%" FontSize="13" Foreground="#E0E0E0" Margin="0,12,0,0"/>
+                <Card Height="280" Background="#14141F" BorderBrush="#00D284" BorderThickness="1.2" CornerRadius="20" Padding="28">
+                    <Label Text="QURILMA HOLATI" FontSize="11" FontWeight="Bold" Foreground="#00D284"/>
+                    <Label id="lblPower" Text="Qurilma quvvati: 45%" FontSize="15" Foreground="#EEEEFF" Margin="0,18,0,0"/>
                     
-                    <ProgressBar Progress="45" ProgressColor="#00D2FF" Height="10" Margin="0,8,0,0"/>
-                    <ProgressBar Progress="85" ProgressColor="#FF0055" Height="10" Margin="0,8,0,0"/>
+                    <FlexPanel Direction="Column" Gap="14" Margin="0,20,0,0" Width="100%">
+                        <ProgressBar Progress="45" ProgressColor="#00D284" Height="10" CornerRadius="5"/>
+                        <ProgressBar Progress="85" ProgressColor="#FF3366" Height="10" CornerRadius="5"/>
+                    </FlexPanel>
                     
-                    <FlexPanel Direction="Row" Gap="16" Margin="0,16,0,0" Width="100%">
-                        <NimbusButton Text="🚀 Quvvat berish" Width="150" Height="40" CornerRadius="6" Background="#00D2FF" TextColor="#000000" onclick="OnBoostClick"/>
-                        <IconButton Icon="⚙" ButtonColor="#2A2A3E" IconColor="#AAAACC" Width="40" Height="40" IsCircular="true"/>
-                        <IconButton Icon="🔔" ButtonColor="#2A2A3E" IconColor="#FFCC00" Width="40" Height="40" IsCircular="true"/>
+                    <FlexPanel Direction="Row" Gap="16" Margin="0,28,0,0" Width="100%">
+                        <NimbusButton Text="🚀 Boost Mode" Width="160" Height="48" CornerRadius="10" Background="#00D284" TextColor="#050508" onclick="OnBoostClick"/>
+                        <IconButton Icon="⚙" ButtonColor="#1C1C28" IconColor="#8888AA" Width="48" Height="48" CornerRadius="10"/>
+                        <IconButton Icon="🔔" ButtonColor="#1C1C28" IconColor="#FFCC00" Width="48" Height="48" CornerRadius="10"/>
                     </FlexPanel>
                 </Card>
 
-                <!-- Card 3: Inputs & Toggles -->
-                <Card Height="220" Background="#12121A" BorderBrush="#B026FF" BorderThickness="1" CornerRadius="16" Padding="20">
-                    <Label Text="SOZLAMALAR" FontSize="11" FontWeight="Bold" Foreground="#B026FF"/>
+                <Card Height="280" Background="#14141F" BorderBrush="#B026FF" BorderThickness="1.2" CornerRadius="20" Padding="28">
+                    <Label Text="TIZIM SOZLAMALARI" FontSize="11" FontWeight="Bold" Foreground="#B026FF"/>
                     
-                    <FlexPanel Direction="Row" Gap="16" Margin="0,16,0,0" Width="100%">
-                        <Switch Label="AI Rejimi" IsOn="true" ActiveColor="#B026FF" InactiveColor="#333344" Height="28"/>
-                        <Switch Label="Qorong'i fon" IsOn="true" ActiveColor="#7C6FFF" InactiveColor="#333344" Height="28"/>
-                    </FlexPanel>
+                    <FlexPanel Direction="Column" Gap="24" Margin="0,24,0,0" Width="100%">
+                        <FlexPanel Direction="Row" Gap="32" Width="100%">
+                            <Switch Label="AI Rejimi" IsOn="true" ActiveColor="#B026FF" InactiveColor="#2A2A3E" Height="30" Width="140"/>
+                            <Switch Label="Dark Mode" IsOn="true" ActiveColor="#7C6FFF" InactiveColor="#2A2A3E" Height="30" Width="140"/>
+                        </FlexPanel>
 
-                    <!-- User requested perfect input logic (No Windows Context menu anymore) -->
-                    <SearchInput Placeholder="🔍 Tizim bo'yicha izlash..." Background="#1C1C26" Height="44" CornerRadius="8" Margin="0,16,0,0" Width="100%"/>
+                        <SearchInput Placeholder="🔍 Tizim bo'yicha qidiruv..." Background="#1C1C28" Height="52" CornerRadius="12" BorderBrush="#2A2A3E" Width="100%"/>
+                    </FlexPanel>
                 </Card>
 
             </FlexPanel>
 
             <!-- BOTTOM WIDGETS -->
-            <FlexPanel Direction="Row" Gap="24" Height="140" Width="100%">
+            <FlexPanel Direction="Row" Gap="28" Height="180" Width="100%">
                 
-                <Card Height="140" Background="#12121A" BorderBrush="#2A2A3E" CornerRadius="16" Padding="20">
-                    <Label Text="RADIO VA TANLOVLAR" FontSize="11" FontWeight="Bold" Foreground="#FFCC00"/>
-                    <FlexPanel Direction="Row" Gap="16" Margin="0,16,0,0" Width="100%">
-                        <RadioButton Label="Turbo" IsSelected="true" ActiveColor="#FFCC00" Height="28"/>
-                        <RadioButton Label="Eko" IsSelected="false" ActiveColor="#00E676" Height="28"/>
-                        <RadioButton Label="Oddiy" IsSelected="false" ActiveColor="#7C6FFF" Height="28"/>
+                <Card Height="180" Background="#14141F" BorderBrush="#2A2A3E" CornerRadius="20" Padding="28">
+                    <Label Text="REJIM VA TANLOVLAR" FontSize="11" FontWeight="Bold" Foreground="#FFCC00"/>
+                    <FlexPanel Direction="Row" Gap="28" Margin="0,24,0,0" Width="100%">
+                        <RadioButton Label="Turbo" IsSelected="true" ActiveColor="#FFCC00" Height="30" Width="100"/>
+                        <RadioButton Label="Eco" IsSelected="false" ActiveColor="#00D284" Height="30" Width="100"/>
+                        <RadioButton Label="Normal" IsSelected="false" ActiveColor="#7C6FFF" Height="30" Width="100"/>
                     </FlexPanel>
-                    <FlexPanel Direction="Row" Gap="12" Margin="0,16,0,0" Width="100%">
-                        <Chip Text="Yangi!" ChipColor="#FF0055" ChipTextColor="#FFF" Width="70" Height="26"/>
-                        <Chip Text="V3.0 Beta" ChipColor="#00D2FF" ChipTextColor="#000" Width="85" Height="26"/>
-                        <Badge Content="PRO" Background="#B026FF" Foreground="#FFF" Width="40" Height="24"/>
+                    <FlexPanel Direction="Row" Gap="18" Margin="0,24,0,0" Width="100%">
+                        <Chip Text="Yangi!" ChipColor="#FF3366" ChipTextColor="#FFF" Width="90" Height="30" CornerRadius="15"/>
+                        <Chip Text="V3.1 Beta" ChipColor="#00D2FF" ChipTextColor="#000" Width="105" Height="30" CornerRadius="15"/>
+                        <Badge Content="PREMIUM" Background="#B026FF" Foreground="#FFF" Width="80" Height="26"/>
                     </FlexPanel>
                 </Card>
 
-                <Card Height="140" Background="#12121A" BorderBrush="#2A2A3E" CornerRadius="16" Padding="20">
-                    <Label Text="XABARLAR" FontSize="11" FontWeight="Bold" Foreground="#7C6FFF"/>
-                    <NimbusTextInput Placeholder="Xabaringizni yozing..." Background="#1C1C26" Height="42" CornerRadius="8" Margin="0,12,0,0" LabelColor="#7C6FFF" Width="100%"/>
-                    <FlexPanel Direction="Row" Gap="16" Margin="0,12,0,0" Width="100%">
-                        <NimbusCheckBox Label="Anonim qolish" IsChecked="false" CheckColor="#7C6FFF" Height="24"/>
-                        <LinkButton Text="Qoidalar" Url="https://nimbus.com/rules" LinkColor="#7C6FFF" ShowUnderline="false"/>
+                <Card Height="180" Background="#14141F" BorderBrush="#2A2A3E" CornerRadius="20" Padding="28">
+                    <Label Text="TEZKOR XABARLAR" FontSize="11" FontWeight="Bold" Foreground="#7C6FFF"/>
+                    <NimbusTextInput Placeholder="Bu yerga yozing..." Background="#1C1C28" BorderBrush="#2A2A3E" Height="52" CornerRadius="12" Margin="0,18,0,0" LabelColor="#7C6FFF" Width="100%"/>
+                    <FlexPanel Direction="Row" Gap="28" Margin="0,20,0,0" Width="100%">
+                        <NimbusCheckBox Label="Anonim jo'natish" IsChecked="false" CheckColor="#7C6FFF" Height="24" Width="170"/>
+                        <LinkButton Text="Qoidalar va shartlar" Url="https://nimbus.com/rules" LinkColor="#7C6FFF" ShowUnderline="false" FontSize="13"/>
                     </FlexPanel>
                 </Card>
 
